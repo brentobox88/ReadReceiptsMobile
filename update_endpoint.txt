@@ -1,0 +1,24 @@
+﻿# Add this to app_document_ai_fixed.py after the GET /receipts/{receipt_id} endpoint
+
+@app.put("/receipts/{receipt_id}")
+async def update_receipt(receipt_id: str, request: Request):
+    try:
+        data = await request.json()
+        notes = data.get('notes', '')
+        
+        conn = sqlite3.connect('receipts.db')
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE receipts SET notes = ?, updated_at = ? WHERE id = ?',
+            (notes, datetime.now().isoformat(), receipt_id)
+        )
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse(content={"success": True, "message": "Receipt updated"})
+    except Exception as e:
+        print(f"Error updating receipt: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )

@@ -1,4 +1,4 @@
-{
+﻿{
   "expo": {
     "name": "ReadReceiptsMobile",
     "slug": "ReadReceiptsMobile",
@@ -13,7 +13,13 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow camera to take photos of receipts",
+        "NSPhotoLibraryUsageDescription": "Allow photo library access to upload receipts",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.brentglynn88.ReadReceiptsMobile"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,10 +27,37 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.brentglynn88.ReadReceiptsMobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-image-picker",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d18aa1fb-0718-4486-bfa2-2adc4d2b1db7"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d18aa1fb-0718-4486-bfa2-2adc4d2b1db7"
     }
   }
 }
+
