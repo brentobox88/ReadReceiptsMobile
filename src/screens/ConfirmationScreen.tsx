@@ -29,7 +29,7 @@ const ConfirmationScreen = () => {
   const [notes, setNotes] = useState<string>('');
   const { checkFeature } = useFeatureCheck();
 
-  const API_URL = 'http://10.0.0.229:8000';
+  const API_URL = 'http://192.168.2.242:8000';
 
   useEffect(() => {
     fetchReceiptDetails();
@@ -175,7 +175,7 @@ const ConfirmationScreen = () => {
           <Text style={styles.totalValue}>{currency} {total.toFixed(2)}</Text>
         </View>
 
-        {checkFeature('categories') && (
+        {true && (
           <TouchableOpacity
             style={styles.categoryButton}
             onPress={() => setCategoryModalVisible(true)}
@@ -373,3 +373,10 @@ const styles = StyleSheet.create({
 });
 
 export default ConfirmationScreen;
+
+
+
+
+
+
+

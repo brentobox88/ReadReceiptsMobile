@@ -22,7 +22,7 @@ const ProfileScreen = () => {
   const [userName, setUserName] = useState('Receipt User');
   const [userEmail, setUserEmail] = useState('user@receipts.app');
 
-  const API_URL = 'http://10.0.0.229:8000';
+  const API_URL = 'http://192.168.2.242:8000';
 
   // Mock user data for development
   useEffect(() => {
@@ -318,3 +318,9 @@ const styles = StyleSheet.create({
 });
 
 export default ProfileScreen;
+
+
+
+
+
+

@@ -36,7 +36,7 @@ const ExportScreen = () => {
   const [exporting, setExporting] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState<'csv' | 'json'>('csv');
 
-  const API_URL = 'http://10.0.0.229:8000';
+  const API_URL = 'http://192.168.2.242:8000';
 
   const fetchReceipts = async () => {
     try {
@@ -491,6 +491,12 @@ const styles = StyleSheet.create({
 });
 
 export default ExportScreen;
+
+
+
+
+
+
 
 
 

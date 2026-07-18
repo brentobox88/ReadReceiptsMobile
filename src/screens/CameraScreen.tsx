@@ -1,4 +1,4 @@
-﻿// src/screens/CameraScreen.tsx (navigation fix)
+﻿// src/screens/CameraScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -20,7 +20,7 @@ const CameraScreen = () => {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [hasGalleryPermission, setHasGalleryPermission] = useState<boolean | null>(null);
 
-  const API_URL = 'http://10.0.0.229:8000';
+  const API_URL = 'http://192.168.2.242:8000';
 
   useEffect(() => {
     (async () => {
@@ -54,9 +54,7 @@ const CameraScreen = () => {
       
       if (data.success) {
         const receiptId = data.receipt_id || data.id;
-    const imagePath = data.image_path || imageUri;
-
-    console.log('📸 Receipt saved with image:', imagePath);
+        const imagePath = data.image_path || imageUri;
         Alert.alert(
           'Success',
           'Receipt uploaded successfully!',
@@ -64,10 +62,9 @@ const CameraScreen = () => {
             {
               text: 'View Receipt',
               onPress: () => {
-                // Use 'any' to bypass TypeScript navigation errors
                 (navigation as any).navigate('Confirmation', { 
                   receiptId: receiptId,
-              imageUri: imagePath,
+                  imageUri: imagePath,
                 });
               },
             },
@@ -163,7 +160,7 @@ const CameraScreen = () => {
       {loading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4CAF50" />
-          <Text style={styles.loadingText}>Processing receipt with Document AI...</Text>
+          <Text style={styles.loadingText}>Processing receipt...</Text>
         </View>
       )}
     </View>
@@ -234,8 +231,6 @@ const styles = StyleSheet.create({
 });
 
 export default CameraScreen;
-
-
 
 
 

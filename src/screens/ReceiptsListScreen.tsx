@@ -46,7 +46,7 @@ const ReceiptsListScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
 
-  const API_URL = 'http://10.0.0.229:8000';
+  const API_URL = 'http://192.168.2.242:8000';
 
   const fetchReceipts = async () => {
     try {
@@ -241,7 +241,6 @@ const ReceiptsListScreen = () => {
         )}
       </View>
 
-      {/* Category Filter Chips */}
       <ScrollView horizontal style={styles.categoryFilters} showsHorizontalScrollIndicator={false}>
         <TouchableOpacity
           style={[styles.categoryChip, !filterCategory && styles.categoryChipActive]}
@@ -342,7 +341,7 @@ const ReceiptsListScreen = () => {
                         styles.modalConfidenceBar,
                         { 
                           backgroundColor: getConfidenceColor(selectedReceipt.confidence_score || 0),
-                          width: Math.round((selectedReceipt.confidence_score || 0) * 100)
+                          width: Math.round((selectedReceipt.confidence_score || 0) * 100) + '%'
                         },
                       ]}
                     />
@@ -504,6 +503,18 @@ const styles = StyleSheet.create({
     color: '#333',
     flex: 1,
   },
+  notesIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    width: '100%',
+  },
+  notesText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+    flex: 1,
+  },
   confidenceBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -572,7 +583,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: 90,
+    maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -660,5 +671,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+export default ReceiptsListScreen;
+
+
+
+
 
 
