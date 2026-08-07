@@ -1,4 +1,4 @@
-﻿// src/screens/AuthScreen.tsx
+// src/screens/AuthScreen.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -61,7 +61,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         <Text style={styles.title}>ReadReceipts</Text>
         <Text style={styles.subtitle}>Scan, manage, and export your receipts</Text>
         <View style={styles.mockBadge}>
-          <Text style={styles.mockBadgeText}>⚡ Dev Mode - Mock Auth</Text>
+          <Text style={styles.mockBadgeText}>? Dev Mode - Mock Auth</Text>
         </View>
       </View>
 
@@ -153,6 +153,7 @@ const styles = StyleSheet.create({
 });
 
 export default AuthScreen;
+
 
 
 

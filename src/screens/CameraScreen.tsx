@@ -1,4 +1,4 @@
-﻿// src/screens/CameraScreen.tsx
+// src/screens/CameraScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const CameraScreen = () => {
   const navigation = useNavigation();
@@ -20,7 +22,7 @@ const CameraScreen = () => {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [hasGalleryPermission, setHasGalleryPermission] = useState<boolean | null>(null);
 
-  const API_URL = 'http://192.168.2.242:8000';
+  const API_URL = 'https://readreceipts-api-irch.onrender.com';
 
   useEffect(() => {
     (async () => {
@@ -119,7 +121,7 @@ const CameraScreen = () => {
 
   if (hasCameraPermission === null || hasGalleryPermission === null) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#4CAF50" />
         <Text style={styles.loadingText}>Checking permissions...</Text>
       </View>
@@ -128,41 +130,59 @@ const CameraScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Scan Receipt</Text>
-      <Text style={styles.subtitle}>Take a photo or choose from gallery</Text>
-
-      {selectedImage && (
-        <Image source={{ uri: selectedImage }} style={styles.preview} />
-      )}
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.button, styles.cameraButton]}
-          onPress={handleTakePhoto}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'Processing...' : '📷 Take Photo'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, styles.galleryButton]}
-          onPress={handleChooseFromLibrary}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'Processing...' : '🖼️ Choose from Gallery'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4CAF50" />
-          <Text style={styles.loadingText}>Processing receipt...</Text>
+      <LinearGradient
+        colors={['#4CAF50', '#2196F3']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>Scan Receipt</Text>
+            <Text style={styles.headerSubtitle}>Take a photo or choose from gallery</Text>
+          </View>
+          <View style={styles.headerIcon}>
+            <Ionicons name="camera" size={28} color="#fff" />
+          </View>
         </View>
-      )}
+      </LinearGradient>
+
+      <View style={styles.content}>
+        {selectedImage && (
+          <Image source={{ uri: selectedImage }} style={styles.preview} />
+        )}
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.button, styles.cameraButton]}
+            onPress={handleTakePhoto}
+            disabled={loading}
+          >
+            <Ionicons name="camera" size={24} color="#fff" />
+            <Text style={styles.buttonText}>
+              {loading ? 'Processing...' : 'Take Photo'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.galleryButton]}
+            onPress={handleChooseFromLibrary}
+            disabled={loading}
+          >
+            <Ionicons name="images" size={24} color="#fff" />
+            <Text style={styles.buttonText}>
+              {loading ? 'Processing...' : 'Choose from Gallery'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4CAF50" />
+            <Text style={styles.loadingText}>Processing receipt...</Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 };
@@ -170,22 +190,52 @@ const CameraScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: '#f5f5f5',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginTop: 40,
-    color: '#333',
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
-  subtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: 10,
+  loadingText: {
+    marginTop: 8,
+    fontSize: 14,
     color: '#666',
-    marginBottom: 30,
+  },
+  header: {
+    paddingTop: 48,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  headerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: {
+    flex: 1,
+    padding: 20,
   },
   preview: {
     width: '100%',
@@ -198,10 +248,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   button: {
+    flexDirection: 'row',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -223,17 +275,6 @@ const styles = StyleSheet.create({
     marginTop: 30,
     alignItems: 'center',
   },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
 });
 
 export default CameraScreen;
-
-
-
-
-
-

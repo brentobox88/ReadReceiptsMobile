@@ -1,4 +1,4 @@
-﻿// src/screens/ConfirmationScreen.tsx
+// src/screens/ConfirmationScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -29,7 +29,7 @@ const ConfirmationScreen = () => {
   const [notes, setNotes] = useState<string>('');
   const { checkFeature } = useFeatureCheck();
 
-  const API_URL = 'http://192.168.2.242:8000';
+  const API_URL = 'https://readreceipts-api-irch.onrender.com';
 
   useEffect(() => {
     fetchReceiptDetails();
@@ -373,6 +373,7 @@ const styles = StyleSheet.create({
 });
 
 export default ConfirmationScreen;
+
 
 
 

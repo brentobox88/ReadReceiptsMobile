@@ -1,5 +1,5 @@
-﻿// src/screens/ProfileScreen.tsx
-import React, { useState, useEffect } from 'react';
+// src/screens/ProfileScreen.tsx
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,45 +8,15 @@ import {
   ScrollView,
   Alert,
   Switch,
-  Image,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const ProfileScreen = () => {
+  const navigation = useNavigation();
   const [notifications, setNotifications] = useState(true);
-  const [autoBackup, setAutoBackup] = useState(false);
-  const [receiptCount, setReceiptCount] = useState(0);
-  const [totalSpent, setTotalSpent] = useState(0);
-  const [avgConfidence, setAvgConfidence] = useState(0);
-  const [userName, setUserName] = useState('Receipt User');
-  const [userEmail, setUserEmail] = useState('user@receipts.app');
-
-  const API_URL = 'http://192.168.2.242:8000';
-
-  // Mock user data for development
-  useEffect(() => {
-    // In production, this would come from Firebase auth
-    setUserName('Test User');
-    setUserEmail('test@readreceipts.com');
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch(API_URL + '/receipts');
-      const data = await response.json();
-      if (data.receipts) {
-        setReceiptCount(data.receipts.length);
-        const total = data.receipts.reduce((sum: number, r: any) => sum + (r.total_amount || 0), 0);
-        setTotalSpent(total);
-        const avg = data.receipts.reduce((sum: number, r: any) => sum + (r.confidence_score || 0), 0) / data.receipts.length || 0;
-        setAvgConfidence(Math.round(avg * 100));
-      }
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  };
+  const [darkMode, setDarkMode] = useState(false);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -54,130 +24,130 @@ const ProfileScreen = () => {
       'Are you sure you want to sign out?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Sign Out', 
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Signed Out', 'You have been signed out.');
-          }
-        }
+        { text: 'Sign Out', style: 'destructive', onPress: () => {
+          // Sign out logic here
+          Alert.alert('Signed Out', 'You have been signed out successfully.');
+        }}
       ]
     );
   };
 
-  const handleClearData = () => {
-    Alert.alert(
-      'Clear Data',
-      'Are you sure you want to clear all receipt data? This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear', style: 'destructive', onPress: () => Alert.alert('Cleared', 'All data has been cleared.') },
-      ]
-    );
-  };
-
-  const handleAbout = () => {
-    Alert.alert(
-      'About ReadReceipts',
-      'ReadReceipts v2.0\n\nPowered by Google Document AI\nYour receipt scanning and management solution.\n\nScan, organize, and export your receipts with ease.'
-    );
-  };
+  const menuItems = [
+    { icon: 'person-outline', label: 'Account Settings', color: '#4CAF50' },
+    { icon: 'receipt-outline', label: 'My Receipts', color: '#2196F3' },
+    { icon: 'stats-chart-outline', label: 'Reports', color: '#FF9800' },
+    { icon: 'download-outline', label: 'Export Data', color: '#9C27B0' },
+    { icon: 'star-outline', label: 'Subscription', color: '#FFC107' },
+    { icon: 'help-circle-outline', label: 'Help & Support', color: '#607D8B' },
+    { icon: 'information-circle-outline', label: 'About', color: '#795548' },
+  ];
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Profile Header */}
-      <View style={styles.header}>
-        <View style={styles.avatarContainer}>
-          <Ionicons name="person-circle" size={80} color="#4CAF50" />
-        </View>
-        <Text style={styles.name}>{userName}</Text>
-        <Text style={styles.email}>{userEmail}</Text>
-        <View style={styles.mockBadge}>
-          <Text style={styles.mockBadgeText}>⚡ Dev Mode</Text>
-        </View>
-      </View>
-
-      {/* Stats Summary */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{receiptCount}</Text>
-          <Text style={styles.statLabel}>Total Receipts</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}></Text>
-          <Text style={styles.statLabel}>Total Spent</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{avgConfidence}%</Text>
-          <Text style={styles.statLabel}>Avg Confidence</Text>
-        </View>
-      </View>
-
-      {/* Settings */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Settings</Text>
-        
-        <View style={styles.settingItem}>
-          <View style={styles.settingLeft}>
-            <Ionicons name="notifications-outline" size={24} color="#666" />
-            <Text style={styles.settingText}>Notifications</Text>
+    <View style={styles.container}>
+      {/* Header */}
+      <LinearGradient
+        colors={['#4CAF50', '#2196F3']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.profileIcon}>
+            <Ionicons name="person" size={48} color="#fff" />
           </View>
-          <Switch
-            value={notifications}
-            onValueChange={setNotifications}
-            trackColor={{ false: '#e0e0e0', true: '#4CAF50' }}
-          />
-        </View>
-
-        <View style={styles.settingItem}>
-          <View style={styles.settingLeft}>
-            <Ionicons name="cloud-outline" size={24} color="#666" />
-            <Text style={styles.settingText}>Auto Backup</Text>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>John Doe</Text>
+            <Text style={styles.headerSubtitle}>john.doe@email.com</Text>
           </View>
-          <Switch
-            value={autoBackup}
-            onValueChange={setAutoBackup}
-            trackColor={{ false: '#e0e0e0', true: '#4CAF50' }}
-          />
         </View>
-      </View>
+        <View style={styles.headerStats}>
+          <View style={styles.headerStatItem}>
+            <Text style={styles.headerStatValue}>24</Text>
+            <Text style={styles.headerStatLabel}>Receipts</Text>
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.headerStatItem}>
+            <Text style={styles.headerStatValue}>,247</Text>
+            <Text style={styles.headerStatLabel}>Total Spent</Text>
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.headerStatItem}>
+            <Text style={styles.headerStatValue}>92%</Text>
+            <Text style={styles.headerStatLabel}>Confidence</Text>
+          </View>
+        </View>
+      </LinearGradient>
 
-      {/* Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Actions</Text>
+      {/* Menu Items */}
+      <ScrollView style={styles.menuContainer}>
+        {menuItems.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.menuItem}
+            onPress={() => {
+              if (item.label === 'My Receipts') {
+                navigation.navigate('Receipts' as never);
+              } else if (item.label === 'Reports') {
+                navigation.navigate('Reports' as never);
+              } else if (item.label === 'Export Data') {
+                navigation.navigate('Export' as never);
+              } else if (item.label === 'Subscription') {
+                navigation.navigate('Subscription' as never);
+              } else {
+                Alert.alert(item.label, 'Feature coming soon!');
+              }
+            }}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIcon, { backgroundColor: item.color + '20' }]}>
+                <Ionicons name={item.icon as any} size={22} color={item.color} />
+              </View>
+              <Text style={styles.menuLabel}>{item.label}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+        ))}
 
-        <TouchableOpacity style={styles.actionItem} onPress={() => Alert.alert('Export All', 'Exporting all receipts...')}>
-          <Ionicons name="download-outline" size={24} color="#4CAF50" />
-          <Text style={styles.actionText}>Export All Receipts</Text>
-          <Ionicons name="chevron-forward-outline" size={20} color="#ccc" style={styles.actionArrow} />
+        {/* Settings Section */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.settingsTitle}>Settings</Text>
+          <View style={styles.settingsItem}>
+            <View style={styles.settingsItemLeft}>
+              <Ionicons name="notifications-outline" size={22} color="#666" />
+              <Text style={styles.settingsLabel}>Notifications</Text>
+            </View>
+            <Switch
+              value={notifications}
+              onValueChange={setNotifications}
+              trackColor={{ false: '#ccc', true: '#4CAF50' }}
+              thumbColor={notifications ? '#fff' : '#f4f3f4'}
+            />
+          </View>
+          <View style={styles.settingsItem}>
+            <View style={styles.settingsItemLeft}>
+              <Ionicons name="moon-outline" size={22} color="#666" />
+              <Text style={styles.settingsLabel}>Dark Mode</Text>
+            </View>
+            <Switch
+              value={darkMode}
+              onValueChange={setDarkMode}
+              trackColor={{ false: '#ccc', true: '#4CAF50' }}
+              thumbColor={darkMode ? '#fff' : '#f4f3f4'}
+            />
+          </View>
+        </View>
+
+        {/* Sign Out Button */}
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <Ionicons name="log-out-outline" size={22} color="#F44336" />
+          <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionItem} onPress={handleClearData}>
-          <Ionicons name="trash-outline" size={24} color="#F44336" />
-          <Text style={[styles.actionText, styles.dangerText]}>Clear All Data</Text>
-          <Ionicons name="chevron-forward-outline" size={20} color="#ccc" style={styles.actionArrow} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionItem} onPress={handleAbout}>
-          <Ionicons name="information-circle-outline" size={24} color="#4CAF50" />
-          <Text style={styles.actionText}>About</Text>
-          <Ionicons name="chevron-forward-outline" size={20} color="#ccc" style={styles.actionArrow} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.actionItem, styles.signOutItem]} onPress={handleSignOut}>
-          <Ionicons name="log-out-outline" size={24} color="#F44336" />
-          <Text style={[styles.actionText, styles.dangerText]}>Sign Out</Text>
-          <Ionicons name="chevron-forward-outline" size={20} color="#ccc" style={styles.actionArrow} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>ReadReceipts v2.0</Text>
-        <Text style={styles.footerSubtext}>Powered by Google Document AI</Text>
-      </View>
-    </ScrollView>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>ReadReceipts v1.0.0</Text>
+        </View>
+      </ScrollView>
+    </View>
   );
 };
 
@@ -187,140 +157,160 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: '#fff',
-    padding: 24,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingTop: 48,
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  avatarContainer: {
-    marginBottom: 8,
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  email: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
-  mockBadge: {
-    backgroundColor: '#FF9800',
-    paddingHorizontal: 12,
-    paddingVertical: 2,
-    borderRadius: 12,
-    marginTop: 6,
-  },
-  mockBadgeText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  statsContainer: {
+  headerContent: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    padding: 16,
-    marginTop: 12,
-    marginHorizontal: 12,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statItem: {
-    flex: 1,
     alignItems: 'center',
   },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#4CAF50',
+  profileIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
   },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
+  headerText: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
-  statDivider: {
-    width: 1,
-    backgroundColor: '#e0e0e0',
+  headerStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.15)',
   },
-  section: {
-    backgroundColor: '#fff',
-    marginTop: 12,
-    marginHorizontal: 12,
-    borderRadius: 12,
+  headerStatItem: {
+    alignItems: 'center',
+  },
+  headerStatValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerStatLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+  },
+  headerDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  menuContainer: {
+    flex: 1,
     padding: 16,
   },
-  sectionTitle: {
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  menuLabel: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  settingsSection: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  settingsTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
     marginBottom: 12,
   },
-  settingItem: {
+  settingsItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#f5f5f5',
   },
-  settingLeft: {
+  settingsItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  settingText: {
-    fontSize: 16,
+  settingsLabel: {
+    fontSize: 15,
     color: '#333',
     marginLeft: 12,
   },
-  actionItem: {
+  signOutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
   },
-  signOutItem: {
-    borderBottomWidth: 0,
-  },
-  actionText: {
+  signOutText: {
     fontSize: 16,
-    color: '#333',
-    marginLeft: 12,
-    flex: 1,
-  },
-  dangerText: {
+    fontWeight: '600',
     color: '#F44336',
-  },
-  actionArrow: {
-    marginLeft: 'auto',
+    marginLeft: 8,
   },
   footer: {
     alignItems: 'center',
-    padding: 24,
-    paddingBottom: 30,
+    paddingVertical: 16,
   },
   footerText: {
-    fontSize: 14,
-    color: '#999',
-  },
-  footerSubtext: {
     fontSize: 12,
-    color: '#bbb',
-    marginTop: 2,
+    color: '#999',
   },
 });
 
 export default ProfileScreen;
-
-
-
-
-
 

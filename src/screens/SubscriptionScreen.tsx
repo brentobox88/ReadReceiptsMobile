@@ -1,274 +1,157 @@
-﻿// src/screens/SubscriptionScreen.tsx
+// src/screens/SubscriptionScreen.tsx
 import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
+  ScrollView,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSubscription } from '../context/SubscriptionContext';
-import { TIERS } from '../config/features';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const SubscriptionScreen = () => {
-  const { tier, upgradeToPro, upgradeToBusiness, downgradeToFree } = useSubscription();
-  const [selectedTier, setSelectedTier] = useState<string>(tier);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
   const plans = [
     {
       id: 'free',
       name: 'Free',
-      price: TIERS.free.price,
-      features: ['50 receipts/month', 'Basic scanning', 'CSV export', 'Dashboard'],
-      current: tier === 'free',
+      price: '$0',
+      period: '/month',
+      features: ['10 receipts/month', 'Basic OCR', '24/7 support'],
+      color: '#4CAF50',
+      icon: 'leaf-outline',
     },
     {
       id: 'pro',
       name: 'Pro',
-      price: TIERS.pro.price,
-      features: ['Unlimited receipts', 'Categories', 'JSON export', 'Advanced search', 'Edit receipts'],
-      current: tier === 'pro',
-      recommended: true,
+      price: '$9.99',
+      period: '/month',
+      features: ['Unlimited receipts', 'Advanced AI', 'Export to CSV/PDF', 'Priority support'],
+      color: '#2196F3',
+      icon: 'star-outline',
+      popular: true,
     },
     {
       id: 'business',
       name: 'Business',
-      price: TIERS.business.price,
-      features: ['Multi-user', 'Cloud backup', 'API access', 'Priority support'],
-      current: tier === 'business',
+      price: '$29.99',
+      period: '/month',
+      features: ['Everything in Pro', 'Team sharing', 'API access', 'Custom reports'],
+      color: '#9C27B0',
+      icon: 'briefcase-outline',
     },
   ];
 
-  const handleSelectPlan = (planId: string) => {
-    if (planId === tier) {
-      Alert.alert('Already Subscribed', 'You are already on this plan.');
-      return;
-    }
-    
+  const handleSubscribe = (planId: string) => {
+    setSelectedPlan(planId);
     Alert.alert(
-      'Confirm Upgrade',
-      'Are you sure you want to switch to the ' + planId + ' plan?',
+      'Subscribe',
+      `You selected the ${plans.find(p => p.id === planId)?.name} plan.`,
       [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: () => {
-            if (planId === 'pro') upgradeToPro();
-            else if (planId === 'business') upgradeToBusiness();
-            else downgradeToFree();
-            setSelectedTier(planId);
-          },
-        },
+        { text: 'Cancel', style: 'cancel', onPress: () => setSelectedPlan(null) },
+        { text: 'Confirm', onPress: () => Alert.alert('Success', 'Subscription activated!') },
       ]
     );
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Choose Your Plan</Text>
-        <Text style={styles.subtitle}>Upgrade to unlock more features</Text>
-      </View>
-
-      {plans.map((plan) => (
-        <TouchableOpacity
-          key={plan.id}
-          style={[
-            styles.planCard,
-            plan.recommended && styles.recommendedCard,
-            plan.current && styles.currentCard,
-          ]}
-          onPress={() => handleSelectPlan(plan.id)}
-          activeOpacity={0.8}
-        >
-          {plan.recommended && (
-            <View style={styles.recommendedBadge}>
-              <Text style={styles.recommendedText}>Most Popular</Text>
-            </View>
-          )}
-          
-          {plan.current && (
-            <View style={styles.currentBadge}>
-              <Text style={styles.currentText}>✓ Current Plan</Text>
-            </View>
-          )}
-
-          <Text style={styles.planName}>{plan.name}</Text>
-          <Text style={styles.planPrice}>{plan.price}</Text>
-          <View style={styles.featuresContainer}>
-            {plan.features.map((feature, index) => (
-              <View key={index} style={styles.featureRow}>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={20}
-                  color={plan.current ? '#4CAF50' : '#666'}
-                />
-                <Text style={[styles.featureText, plan.current && styles.currentFeatureText]}>
-                  {feature}
-                </Text>
-              </View>
-            ))}
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#4CAF50', '#2196F3']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>Subscription</Text>
+            <Text style={styles.headerSubtitle}>Choose your plan</Text>
           </View>
+          <View style={styles.headerIcon}>
+            <Ionicons name="star" size={28} color="#fff" />
+          </View>
+        </View>
+      </LinearGradient>
 
+      <ScrollView style={styles.content}>
+        {plans.map((plan) => (
           <TouchableOpacity
+            key={plan.id}
             style={[
-              styles.selectButton,
-              plan.current && styles.currentButton,
-              plan.recommended && !plan.current && styles.recommendedButton,
+              styles.planCard,
+              selectedPlan === plan.id && styles.planCardSelected,
+              plan.popular && styles.planCardPopular,
             ]}
-            onPress={() => handleSelectPlan(plan.id)}
-            disabled={plan.current}
+            onPress={() => handleSubscribe(plan.id)}
+            activeOpacity={0.7}
           >
-            <Text style={[
-              styles.selectButtonText,
-              plan.current && styles.currentButtonText,
-            ]}>
-              {plan.current ? 'Active Plan' : 'Select'}
-            </Text>
+            {plan.popular && (
+              <View style={styles.popularBadge}>
+                <Text style={styles.popularText}>Most Popular</Text>
+              </View>
+            )}
+            <View style={styles.planHeader}>
+              <View style={[styles.planIcon, { backgroundColor: plan.color + '20' }]}>
+                <Ionicons name={plan.icon as any} size={24} color={plan.color} />
+              </View>
+              <View>
+                <Text style={styles.planName}>{plan.name}</Text>
+                <View style={styles.planPriceContainer}>
+                  <Text style={[styles.planPrice, { color: plan.color }]}>{plan.price}</Text>
+                  <Text style={styles.planPeriod}>{plan.period}</Text>
+                </View>
+              </View>
+            </View>
+            <View style={styles.planFeatures}>
+              {plan.features.map((feature, index) => (
+                <View key={index} style={styles.featureItem}>
+                  <Ionicons name="checkmark-circle" size={20} color={plan.color} />
+                  <Text style={styles.featureText}>{feature}</Text>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={[styles.subscribeButton, { backgroundColor: plan.color }]}
+              onPress={() => handleSubscribe(plan.id)}
+            >
+              <Text style={styles.subscribeButtonText}>
+                {selectedPlan === plan.id ? 'Selected' : 'Subscribe'}
+              </Text>
+            </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
-      ))}
-
-      <Text style={styles.footerText}>
-        All plans include a 14-day free trial. Cancel anytime.
-      </Text>
-    </ScrollView>
+        ))}
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  header: {
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  planCard: {
-    backgroundColor: '#fff',
-    margin: 12,
-    padding: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  recommendedCard: {
-    borderColor: '#FF9800',
-    borderWidth: 2,
-  },
-  currentCard: {
-    borderColor: '#4CAF50',
-    borderWidth: 2,
-  },
-  recommendedBadge: {
-    position: 'absolute',
-    top: -10,
-    right: 12,
-    backgroundColor: '#FF9800',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  recommendedText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  currentBadge: {
-    position: 'absolute',
-    top: -10,
-    right: 12,
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  currentText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  planName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  planPrice: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 4,
-  },
-  featuresContainer: {
-    marginTop: 12,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 4,
-  },
-  featureText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 8,
-  },
-  currentFeatureText: {
-    color: '#333',
-  },
-  selectButton: {
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#e0e0e0',
-    alignItems: 'center',
-  },
-  recommendedButton: {
-    backgroundColor: '#FF9800',
-  },
-  currentButton: {
-    backgroundColor: '#4CAF50',
-  },
-  selectButtonText: {
-    color: '#666',
-    fontWeight: '600',
-  },
-  currentButtonText: {
-    color: '#fff',
-  },
-  footerText: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#999',
-    padding: 20,
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  header: { paddingTop: 48, paddingBottom: 20, paddingHorizontal: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  headerIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  content: { flex: 1, padding: 16 },
+  planCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: 'transparent' },
+  planCardSelected: { borderColor: '#4CAF50', borderWidth: 2 },
+  planCardPopular: { borderColor: '#2196F3', borderWidth: 2 },
+  popularBadge: { position: 'absolute', top: -1, right: 16, backgroundColor: '#2196F3', paddingHorizontal: 12, paddingVertical: 4, borderTopLeftRadius: 8, borderTopRightRadius: 8 },
+  popularText: { color: '#fff', fontSize: 10, fontWeight: '600' },
+  planHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  planIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  planName: { fontSize: 18, fontWeight: '600', color: '#333' },
+  planPriceContainer: { flexDirection: 'row', alignItems: 'baseline' },
+  planPrice: { fontSize: 22, fontWeight: 'bold' },
+  planPeriod: { fontSize: 14, color: '#999', marginLeft: 2 },
+  planFeatures: { marginVertical: 12, gap: 6 },
+  featureItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  featureText: { fontSize: 14, color: '#555' },
+  subscribeButton: { padding: 12, borderRadius: 10, alignItems: 'center', marginTop: 8 },
+  subscribeButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
 
 export default SubscriptionScreen;
-
-
-
-
-
-
-
-
-

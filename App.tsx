@@ -1,4 +1,4 @@
-﻿// App.tsx - ReadReceipts with Authentication
+// App.tsx - ReadReceipts with Authentication
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -8,13 +8,14 @@ import { SubscriptionProvider } from './src/context/SubscriptionContext';
 import {
   CameraScreen,
   ReceiptsListScreen,
-  ExportScreen,
   ProfileScreen,
   SplashScreen,
   ConfirmationScreen,
   DashboardScreen,
   SubscriptionScreen,
   AuthScreen,
+  ExportScreen,
+  ReportsScreen,
 } from './src/screens';
 
 const Tab = createBottomTabNavigator();
@@ -38,6 +39,8 @@ function MainTabs() {
             iconName = focused ? 'star' : 'star-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
+          } else if (route.name === 'Reports') {
+            iconName = focused ? 'stats-chart' : 'stats-chart-outline';
           } else {
             iconName = 'circle';
           }
@@ -84,7 +87,12 @@ function MainTabs() {
       <Tab.Screen
         name="Export"
         component={ExportScreen}
-        options={{ title: 'Export Receipts', tabBarLabel: 'Export' }}
+        options={{ title: 'Export', tabBarLabel: 'Export' }}
+      />
+      <Tab.Screen
+        name="Reports"
+        component={ReportsScreen}
+        options={{ title: 'Reports', tabBarLabel: 'Reports' }}
       />
       <Tab.Screen
         name="Subscription"
@@ -105,7 +113,6 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Simulate loading check
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 1500);

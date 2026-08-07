@@ -1,4 +1,4 @@
-﻿// src/screens/ExportScreen.tsx
+// src/screens/ExportScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -36,7 +36,7 @@ const ExportScreen = () => {
   const [exporting, setExporting] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState<'csv' | 'json'>('csv');
 
-  const API_URL = 'http://192.168.2.242:8000';
+  const API_URL = 'https://readreceipts-api-irch.onrender.com';
 
   const fetchReceipts = async () => {
     try {
@@ -491,6 +491,7 @@ const styles = StyleSheet.create({
 });
 
 export default ExportScreen;
+
 
 
 

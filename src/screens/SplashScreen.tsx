@@ -1,4 +1,4 @@
-﻿// src/screens/SplashScreen.tsx
+// src/screens/SplashScreen.tsx
 import React, { useEffect, useRef } from 'react';
 import {
   View,
@@ -148,6 +148,7 @@ const styles = StyleSheet.create({
 });
 
 export default SplashScreen;
+
 
 
 
