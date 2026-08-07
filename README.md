@@ -53,14 +53,18 @@ Or scan this QR code with the Expo Go app:
 
 ## 📱 How to Run Locally
 
-### Prerequisites
-- Node.js 18+
-- Expo CLI
-- iOS Simulator (Mac) or Android Emulator
+How to Run Locally
+Prerequisites
 
-### Steps
+Node.js 18+
 
- + "" + "" + "ash
+Expo CLI
+
+iOS Simulator (Mac) or Android Emulator
+
+Steps
+
+bash
 # Clone the repository
 git clone https://github.com/brentobox88/ReadReceiptsMobile.git
 cd ReadReceiptsMobile
@@ -70,9 +74,7 @@ npm install
 
 # Start the development server
 npx expo start
- + "" + "" + "
-
-Scan the QR code with Expo Go on your phone, or press  for Android emulator / i for iOS simulator.
+Scan the QR code with Expo Go on your phone, or press a for Android emulator / i for iOS simulator.
 
 ---
 
