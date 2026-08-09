@@ -1,4 +1,4 @@
-// src/screens/CameraScreen.tsx
+﻿// src/screens/CameraScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -55,24 +55,11 @@ const CameraScreen = () => {
       const data = await response.json();
       
       if (data.success) {
-        const receiptId = data.receipt_id || data.id;
-        const imagePath = data.image_path || imageUri;
-        Alert.alert(
-          'Success',
-          'Receipt uploaded successfully!',
-          [
-            {
-              text: 'View Receipt',
-              onPress: () => {
-                (navigation as any).navigate('Confirmation', { 
-                  receiptId: receiptId,
-                  imageUri: imagePath,
-                });
-              },
-            },
-            { text: 'OK' },
-          ]
-        );
+        // Auto-navigate to Confirmation without alert
+        (navigation as any).navigate('Confirmation', {
+          receiptId: data.receipt_id || data.id,
+          imageUri: data.image_path || imageUri,
+        });
       } else {
         Alert.alert('Error', data.error || 'Failed to upload receipt');
       }
