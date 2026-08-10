@@ -1,4 +1,4 @@
-// src/screens/ExportScreen.tsx
+﻿// src/screens/ExportScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
-  Platform,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +26,17 @@ interface Receipt {
   created_at: string;
   confidence_score: number;
   status: string;
+  document_type?: string;
+  document_number?: string;
+  client_name?: string;
+  due_date?: string;
+  tax_type?: string;
+  tax_year?: string;
+  income_amount?: number;
+  expense_amount?: number;
+  tax_amount_paid?: number;
+  category?: string;
+  notes?: string;
 }
 
 const ExportScreen = () => {
@@ -60,7 +70,7 @@ const ExportScreen = () => {
   );
 
   const generateCSV = (): string => {
-    let csv = 'Merchant,Address,Date,Total,Tax,Currency,Confidence,Status,File\n';
+    let csv = 'Merchant,Address,Date,Total,Tax,Currency,Document Type,Document #,Client Name,Due Date,Tax Type,Tax Year,Income,Expense,Tax Paid,Category,Confidence,Status,File,Notes\n';
     
     receipts.forEach((receipt) => {
       const merchant = (receipt.merchant_name || 'Unknown').replace(/,/g, ';');
@@ -69,12 +79,22 @@ const ExportScreen = () => {
       const total = receipt.total_amount || 0;
       const tax = receipt.tax_amount || 0;
       const currency = receipt.currency || '$';
+      const docType = receipt.document_type || 'expense';
+      const docNumber = (receipt.document_number || '').replace(/,/g, ';');
+      const clientName = (receipt.client_name || '').replace(/,/g, ';');
+      const dueDate = receipt.due_date || 'N/A';
+      const taxType = receipt.tax_type || '';
+      const taxYear = receipt.tax_year || '';
+      const income = receipt.income_amount || 0;
+      const expense = receipt.expense_amount || 0;
+      const taxPaid = receipt.tax_amount_paid || 0;
+      const category = (receipt.category || 'Uncategorized').replace(/,/g, ';');
       const confidence = Math.round((receipt.confidence_score || 0) * 100) + '%';
       const status = receipt.status || 'processed';
       const filename = receipt.filename || 'receipt.jpg';
       const notes = (receipt.notes || '').replace(/,/g, ';');
       
-      csv += merchant + ',' + address + ',' + date + ',' + total + ',' + tax + ',' + currency + ',' + confidence + ',' + status + ',' + filename + '\n';
+      csv += merchant + ',' + address + ',' + date + ',' + total + ',' + tax + ',' + currency + ',' + docType + ',' + docNumber + ',' + clientName + ',' + dueDate + ',' + taxType + ',' + taxYear + ',' + income + ',' + expense + ',' + taxPaid + ',' + category + ',' + confidence + ',' + status + ',' + filename + ',' + notes + '\n';
     });
     
     return csv;
@@ -88,6 +108,16 @@ const ExportScreen = () => {
       total: receipt.total_amount || 0,
       tax: receipt.tax_amount || 0,
       currency: receipt.currency || '$',
+      document_type: receipt.document_type || 'expense',
+      document_number: receipt.document_number || '',
+      client_name: receipt.client_name || '',
+      due_date: receipt.due_date || 'N/A',
+      tax_type: receipt.tax_type || '',
+      tax_year: receipt.tax_year || '',
+      income_amount: receipt.income_amount || 0,
+      expense_amount: receipt.expense_amount || 0,
+      tax_amount_paid: receipt.tax_amount_paid || 0,
+      category: receipt.category || 'Uncategorized',
       confidence: Math.round((receipt.confidence_score || 0) * 100) + '%',
       status: receipt.status || 'processed',
       filename: receipt.filename || 'receipt.jpg',
@@ -121,11 +151,8 @@ const ExportScreen = () => {
         fileExtension = '.json';
       }
 
-      // Use new FileSystem API
-      const cacheDir = Paths.cache;
-      const file = new File(cacheDir, fileName + fileExtension);
-      
-      // Create the file and write content
+      // ✅ New File API
+      const file = new File(Paths.cache, fileName + fileExtension);
       file.create({ overwrite: true });
       file.write(fileContent);
 
@@ -139,9 +166,9 @@ const ExportScreen = () => {
       }
 
       setExporting(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Export error:', error);
-      Alert.alert('Export Error', 'Failed to export receipts.');
+      Alert.alert('Export Error', error.message || 'Failed to export receipts.');
       setExporting(false);
     }
   };
@@ -154,6 +181,10 @@ const ExportScreen = () => {
     if (receipts.length === 0) return 0;
     const sum = receipts.reduce((sum, r) => sum + (r.confidence_score || 0), 0);
     return Math.round((sum / receipts.length) * 100);
+  };
+
+  const getTypeCount = (type: string): number => {
+    return receipts.filter(r => r.document_type === type).length;
   };
 
   if (loading) {
@@ -177,17 +208,19 @@ const ExportScreen = () => {
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{receipts.length}</Text>
-          <Text style={styles.statLabel}>Total Receipts</Text>
+          <Text style={styles.statLabel}>Total</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>
-            {receipts.length > 0 ? '$' + getTotalAmount().toFixed(2) : '.00'}
-          </Text>
-          <Text style={styles.statLabel}>Total Spent</Text>
+          <Text style={styles.statNumber}>{getTypeCount('expense')}</Text>
+          <Text style={styles.statLabel}>Expenses</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{getAverageConfidence()}%</Text>
-          <Text style={styles.statLabel}>Avg Confidence</Text>
+          <Text style={styles.statNumber}>{getTypeCount('invoice')}</Text>
+          <Text style={styles.statLabel}>Income</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{getTypeCount('tax')}</Text>
+          <Text style={styles.statLabel}>Tax</Text>
         </View>
       </View>
 
@@ -245,39 +278,6 @@ const ExportScreen = () => {
               Developer friendly
             </Text>
           </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Export Preview</Text>
-        <View style={styles.previewContainer}>
-          {receipts.length === 0 ? (
-            <View style={styles.emptyPreview}>
-              <Ionicons name="receipt-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyPreviewText}>No receipts to export</Text>
-              <TouchableOpacity
-                style={styles.goToCameraButton}
-                onPress={() => navigation.navigate('Scan' as never)}
-              >
-                <Text style={styles.goToCameraText}>Scan a Receipt</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.previewList}>
-              <Text style={styles.previewHeader}>
-                {selectedFormat === 'csv' ? 'CSV Preview (first 5 rows)' : 'JSON Preview (first item)'}
-              </Text>
-              <View style={styles.previewContent}>
-                <Text style={styles.previewText} numberOfLines={5}>
-                  {selectedFormat === 'csv' 
-                    ? generateCSV().split('\n').slice(0, 6).join('\n')
-                    : generateJSON().split('\n').slice(0, 8).join('\n')
-                  }
-                  {'\n...'}
-                </Text>
-              </View>
-            </View>
-          )}
         </View>
       </View>
 
@@ -409,51 +409,6 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
-  previewContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    minHeight: 120,
-  },
-  emptyPreview: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
-  },
-  emptyPreviewText: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 8,
-  },
-  goToCameraButton: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginTop: 12,
-  },
-  goToCameraText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  previewList: {
-    flex: 1,
-  },
-  previewHeader: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-  },
-  previewContent: {
-    backgroundColor: '#f8f8f8',
-    padding: 12,
-    borderRadius: 8,
-  },
-  previewText: {
-    fontSize: 11,
-    color: '#333',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-  },
   exportButton: {
     backgroundColor: '#4CAF50',
     borderRadius: 12,
@@ -491,14 +446,3 @@ const styles = StyleSheet.create({
 });
 
 export default ExportScreen;
-
-
-
-
-
-
-
-
-
-
-

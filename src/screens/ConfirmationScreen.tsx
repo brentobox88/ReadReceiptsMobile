@@ -1,4 +1,4 @@
-// src/screens/ConfirmationScreen.tsx
+﻿// src/screens/ConfirmationScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -16,32 +16,30 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const DOCUMENT_TYPES = [
-  { id: 'expense', label: '?? Expense' },
-  { id: 'invoice', label: '?? Income' },
-  { id: 'tax', label: '?? Tax' },
+  { id: 'expense', label: '📄 Expense' },
+  { id: 'invoice', label: '📊 Income' },
+  { id: 'tax', label: '🧾 Tax' },
 ];
 
 const CATEGORIES = [
-  { id: 'food', label: '?? Food' },
-  { id: 'transport', label: '?? Transport' },
-  { id: 'shopping', label: '??? Shopping' },
-  { id: 'utilities', label: '?? Utilities' },
-  { id: 'entertainment', label: '?? Entertainment' },
-  { id: 'health', label: '?? Health' },
-  { id: 'travel', label: '?? Travel' },
-  { id: 'other', label: '?? Other' },
+  { id: 'food', label: '🍔 Food' },
+  { id: 'transport', label: '🚗 Transport' },
+  { id: 'shopping', label: '🛍️ Shopping' },
+  { id: 'utilities', label: '💡 Utilities' },
+  { id: 'entertainment', label: '🎬 Entertainment' },
+  { id: 'health', label: '🏥 Health' },
+  { id: 'travel', label: '✈️ Travel' },
+  { id: 'other', label: '📌 Other' },
 ];
 
 const ConfirmationScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute();
   const { receiptId, imageUri } = route.params as { receiptId?: string; imageUri?: string };
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [receipt, setReceipt] = useState<any>(null);
-
-  // Editable fields
   const [merchant, setMerchant] = useState('');
   const [date, setDate] = useState('');
   const [total, setTotal] = useState('');
@@ -64,7 +62,6 @@ const ConfirmationScreen = () => {
       const response = await fetch(API_URL + '/receipts/' + receiptId);
       const data = await response.json();
       setReceipt(data);
-      // Populate editable fields
       setMerchant(data.merchant_name || '');
       setDate(data.transaction_date || '');
       setTotal(data.total_amount?.toString() || '');
@@ -99,7 +96,7 @@ const ConfirmationScreen = () => {
       if (response.ok) {
         Alert.alert('Success', 'Receipt updated!');
         setIsEditing(false);
-        fetchReceiptDetails(); // Refresh the data
+        fetchReceiptDetails();
       } else {
         Alert.alert('Error', 'Failed to update receipt');
       }
@@ -171,7 +168,6 @@ const ConfirmationScreen = () => {
 
         {receipt ? (
           <View style={styles.card}>
-            {/* Editable Fields */}
             {isEditing ? (
               <>
                 <Text style={styles.label}>Merchant</Text>
@@ -181,7 +177,6 @@ const ConfirmationScreen = () => {
                   onChangeText={setMerchant}
                   placeholder="Merchant name"
                 />
-
                 <Text style={styles.label}>Date</Text>
                 <TextInput
                   style={styles.input}
@@ -189,7 +184,6 @@ const ConfirmationScreen = () => {
                   onChangeText={setDate}
                   placeholder="YYYY-MM-DD"
                 />
-
                 <Text style={styles.label}>Total Amount</Text>
                 <TextInput
                   style={styles.input}
@@ -198,7 +192,6 @@ const ConfirmationScreen = () => {
                   placeholder="0.00"
                   keyboardType="numeric"
                 />
-
                 <Text style={styles.label}>Tax Amount</Text>
                 <TextInput
                   style={styles.input}
@@ -207,49 +200,34 @@ const ConfirmationScreen = () => {
                   placeholder="0.00"
                   keyboardType="numeric"
                 />
-
                 <Text style={styles.label}>Document Type</Text>
                 <View style={styles.chipContainer}>
                   {DOCUMENT_TYPES.map((type) => (
                     <TouchableOpacity
                       key={type.id}
-                      style={[
-                        styles.chip,
-                        documentType === type.id && styles.chipActive,
-                      ]}
+                      style={[styles.chip, documentType === type.id && styles.chipActive]}
                       onPress={() => setDocumentType(type.id)}
                     >
-                      <Text style={[
-                        styles.chipText,
-                        documentType === type.id && styles.chipTextActive,
-                      ]}>
+                      <Text style={[styles.chipText, documentType === type.id && styles.chipTextActive]}>
                         {type.label}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-
                 <Text style={styles.label}>Category</Text>
                 <View style={styles.chipContainer}>
                   {CATEGORIES.map((cat) => (
                     <TouchableOpacity
                       key={cat.id}
-                      style={[
-                        styles.chip,
-                        category === cat.id && styles.chipActive,
-                      ]}
+                      style={[styles.chip, category === cat.id && styles.chipActive]}
                       onPress={() => setCategory(cat.id)}
                     >
-                      <Text style={[
-                        styles.chipText,
-                        category === cat.id && styles.chipTextActive,
-                      ]}>
+                      <Text style={[styles.chipText, category === cat.id && styles.chipTextActive]}>
                         {cat.label}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-
                 <TouchableOpacity
                   style={[styles.saveButton, saving && styles.saveButtonDisabled]}
                   onPress={handleSave}
@@ -261,7 +239,6 @@ const ConfirmationScreen = () => {
                 </TouchableOpacity>
               </>
             ) : (
-              // View Mode
               <>
                 <View style={styles.field}>
                   <Text style={styles.label}>Merchant</Text>
@@ -383,4 +360,3 @@ const styles = StyleSheet.create({
 });
 
 export default ConfirmationScreen;
-

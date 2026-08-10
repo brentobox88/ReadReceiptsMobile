@@ -13,7 +13,8 @@ import {
   Animated,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from "@expo/vector-icons";
+import FloatingScanButton from "../components/FloatingScanButton";
 import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, PieChart } from 'react-native-chart-kit';
 // import { useAuth } from '../context/AuthContext'; // DISABLED FOR DEMO
@@ -909,5 +910,13 @@ const styles = StyleSheet.create({
 });
 
 export default ReportsScreen;
+
+
+
+
+
+
+
+
 
 

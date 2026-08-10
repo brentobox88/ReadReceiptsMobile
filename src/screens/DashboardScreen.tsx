@@ -1,4 +1,4 @@
-﻿// src/screens/DashboardScreen.tsx
+// src/screens/DashboardScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -12,6 +12,7 @@ import {
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import FloatingScanButton from '../components/FloatingScanButton';
 
 interface Receipt {
   id: string;
@@ -113,126 +114,136 @@ const DashboardScreen = () => {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4CAF50" />
-      }
-    >
-      {/* Header */}
-      <LinearGradient
-        colors={['#4CAF50', '#2196F3']}
-        style={styles.header}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+    <View style={styles.container}>`n      <FloatingScanButton />
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4CAF50" />
+        }
       >
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.greeting}>Welcome Back</Text>
-            <Text style={styles.headerTitle}>Receipt Summary</Text>
+        {/* Header */}
+        <LinearGradient
+          colors={['#4CAF50', '#2196F3']}
+          style={styles.header}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.greeting}>Welcome Back</Text>
+              <Text style={styles.headerTitle}>Receipt Summary</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => (navigation as any).navigate('Export')}
+              style={styles.exportButton}
+            >
+              <Ionicons name="download-outline" size={24} color="#fff" />
+            </TouchableOpacity>
           </View>
-          <View style={styles.headerRight}>
-            <Text style={styles.receiptCount}>{totalReceipts}</Text>
-            <Text style={styles.receiptCountLabel}>Receipts</Text>
+          <View style={styles.headerStats}>
+            <View style={styles.headerStatItem}>
+              <Text style={styles.headerStatValue}>{totalReceipts}</Text>
+              <Text style={styles.headerStatLabel}>Receipts</Text>
+            </View>
+            <View style={styles.headerDivider} />
+            <View style={styles.headerStatItem}>
+              <Text style={styles.headerStatValue}></Text>
+              <Text style={styles.headerStatLabel}>Total Spent</Text>
+            </View>
+            <View style={styles.headerDivider} />
+            <View style={styles.headerStatItem}>
+              <Text style={styles.headerStatValue}>{Math.round(avgConfidence * 100)}%</Text>
+              <Text style={styles.headerStatLabel}>Avg Confidence</Text>
+            </View>
+            <View style={styles.headerDivider} />
+            <View style={styles.headerStatItem}>
+              <Text style={[styles.headerStatValue, needsReview > 0 ? styles.warningText : null]}>
+                {needsReview}
+              </Text>
+              <Text style={styles.headerStatLabel}>Needs Review</Text>
+            </View>
           </View>
-        </View>
-        <View style={styles.headerStats}>
-          <View style={styles.headerStatItem}>
-            <Text style={styles.headerStatValue}></Text>
-            <Text style={styles.headerStatLabel}>Total Spent</Text>
-          </View>
-          <View style={styles.headerDivider} />
-          <View style={styles.headerStatItem}>
-            <Text style={styles.headerStatValue}>{Math.round(avgConfidence * 100)}%</Text>
-            <Text style={styles.headerStatLabel}>Avg Confidence</Text>
-          </View>
-          <View style={styles.headerDivider} />
-          <View style={styles.headerStatItem}>
-            <Text style={[styles.headerStatValue, needsReview > 0 ? styles.warningText : null]}>
-              {needsReview}
-            </Text>
-            <Text style={styles.headerStatLabel}>Needs Review</Text>
-          </View>
-        </View>
-      </LinearGradient>
+        </LinearGradient>
 
-      {/* Quick Actions */}
-      <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('Scan')}>
-          <View style={[styles.quickActionIcon, { backgroundColor: '#E8F5E9' }]}>
-            <Ionicons name="camera" size={24} color="#4CAF50" />
-          </View>
-          <Text style={styles.quickActionLabel}>Scan</Text>
-        </TouchableOpacity>
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('MainTabs', { screen: 'Scan' })}>
+            <View style={[styles.quickActionIcon, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="camera" size={24} color="#4CAF50" />
+            </View>
+            <Text style={styles.quickActionLabel}>Scan</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('Receipts')}>
-          <View style={[styles.quickActionIcon, { backgroundColor: '#E3F2FD' }]}>
-            <Ionicons name="receipt" size={24} color="#2196F3" />
-          </View>
-          <Text style={styles.quickActionLabel}>Receipts</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('Receipts')}>
+            <View style={[styles.quickActionIcon, { backgroundColor: '#E3F2FD' }]}>
+              <Ionicons name="receipt" size={24} color="#2196F3" />
+            </View>
+            <Text style={styles.quickActionLabel}>Receipts</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('Reports')}>
-          <View style={[styles.quickActionIcon, { backgroundColor: '#FFF3E0' }]}>
-            <Ionicons name="stats-chart" size={24} color="#FF9800" />
-          </View>
-          <Text style={styles.quickActionLabel}>Reports</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('Reports')}>
+            <View style={[styles.quickActionIcon, { backgroundColor: '#FFF3E0' }]}>
+              <Ionicons name="stats-chart" size={24} color="#FF9800" />
+            </View>
+            <Text style={styles.quickActionLabel}>Reports</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('Export')}>
-          <View style={[styles.quickActionIcon, { backgroundColor: '#F3E5F5' }]}>
-            <Ionicons name="download" size={24} color="#9C27B0" />
-          </View>
-          <Text style={styles.quickActionLabel}>Export</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Recent Receipts */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Receipts</Text>
-          <TouchableOpacity onPress={() => (navigation as any).navigate('Receipts')}>
-            <Text style={styles.seeAll}>See All →</Text>
+          <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('Export')}>
+            <View style={[styles.quickActionIcon, { backgroundColor: '#F3E5F5' }]}>
+              <Ionicons name="download" size={24} color="#9C27B0" />
+            </View>
+            <Text style={styles.quickActionLabel}>Export</Text>
           </TouchableOpacity>
         </View>
 
-        {recentReceipts.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="receipt-outline" size={48} color="#ccc" />
-            <Text style={styles.emptyText}>No receipts yet</Text>
-            <Text style={styles.emptySubtext}>Scan your first receipt from the Camera tab</Text>
-          </View>
-        ) : (
-          recentReceipts.map((receipt) => (
-            <TouchableOpacity
-              key={receipt.id}
-              style={styles.receiptItem}
-              onPress={() => (navigation as any).navigate('Confirmation', { receiptId: receipt.id })}
-            >
-              <View style={styles.receiptLeft}>
-                <View style={[styles.receiptIcon, { backgroundColor: getConfidenceColor(receipt.confidence_score || 0) + '20' }]}>
-                  <Ionicons name="receipt" size={16} color={getConfidenceColor(receipt.confidence_score || 0)} />
-                </View>
-                <View>
-                  <Text style={styles.receiptMerchant}>{receipt.merchant_name || 'Unknown'}</Text>
-                  <Text style={styles.receiptDate}>{formatDate(receipt.transaction_date)}</Text>
-                </View>
-              </View>
-              <View style={styles.receiptRight}>
-                <Text style={styles.receiptAmount}>
-                  {formatCurrency(receipt.total_amount || 0, receipt.currency || '$')}
-                </Text>
-                <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(receipt.confidence_score || 0) + '20' }]}>
-                  <Text style={[styles.confidenceText, { color: getConfidenceColor(receipt.confidence_score || 0) }]}>
-                    {getConfidenceLabel(receipt.confidence_score || 0)}
-                  </Text>
-                </View>
-              </View>
+        {/* Recent Receipts */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Receipts</Text>
+            <TouchableOpacity onPress={() => (navigation as any).navigate('Receipts')}>
+              <Text style={styles.seeAll}>See All ?</Text>
             </TouchableOpacity>
-          ))
-        )}
-      </View>
-    </ScrollView>
+          </View>
+
+          {recentReceipts.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="receipt-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyText}>No receipts yet</Text>
+              <Text style={styles.emptySubtext}>Scan your first receipt from the Camera tab</Text>
+            </View>
+          ) : (
+            recentReceipts.map((receipt) => (
+              <TouchableOpacity
+                key={receipt.id}
+                style={styles.receiptItem}
+                onPress={() => (navigation as any).navigate('Confirmation', { receiptId: receipt.id })}
+              >
+                <View style={styles.receiptLeft}>
+                  <View style={[styles.receiptIcon, { backgroundColor: getConfidenceColor(receipt.confidence_score || 0) + '20' }]}>
+                    <Ionicons name="receipt" size={16} color={getConfidenceColor(receipt.confidence_score || 0)} />
+                  </View>
+                  <View>
+                    <Text style={styles.receiptMerchant}>{receipt.merchant_name || 'Unknown'}</Text>
+                    <Text style={styles.receiptDate}>{formatDate(receipt.transaction_date)}</Text>
+                  </View>
+                </View>
+                <View style={styles.receiptRight}>
+                  <Text style={styles.receiptAmount}>
+                    {formatCurrency(receipt.total_amount || 0, receipt.currency || '$')}
+                  </Text>
+                  <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(receipt.confidence_score || 0) + '20' }]}>
+                    <Text style={[styles.confidenceText, { color: getConfidenceColor(receipt.confidence_score || 0) }]}>
+                      {getConfidenceLabel(receipt.confidence_score || 0)}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+      </ScrollView>
+      <FloatingScanButton />
+    </View>
   );
 };
 
@@ -240,6 +251,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  scrollView: {
+    flex: 1,
   },
   centerContainer: {
     flex: 1,
@@ -274,17 +288,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
-  headerRight: {
-    alignItems: 'center',
-  },
-  receiptCount: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  receiptCountLabel: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
+  exportButton: {
+    padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 8,
   },
   headerStats: {
     flexDirection: 'row',
@@ -438,3 +445,5 @@ const styles = StyleSheet.create({
 });
 
 export default DashboardScreen;
+
+

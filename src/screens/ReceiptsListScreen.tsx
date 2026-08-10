@@ -1,4 +1,4 @@
-// src/screens/ReceiptsListScreen.tsx
+﻿// src/screens/ReceiptsListScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -16,7 +16,8 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { CATEGORIES } from '../config/categories';
+import { LinearGradient } from 'expo-linear-gradient';
+import FloatingScanButton from '../components/FloatingScanButton';
 
 interface Receipt {
   id: string;
@@ -78,7 +79,6 @@ const ReceiptsListScreen = () => {
 
   const filterReceipts = (query: string, category: string | null) => {
     let filtered = receipts;
-    
     if (query.trim() !== '') {
       filtered = filtered.filter(
         (receipt) =>
@@ -86,11 +86,9 @@ const ReceiptsListScreen = () => {
           receipt.merchant_address.toLowerCase().includes(query.toLowerCase())
       );
     }
-    
     if (category) {
       filtered = filtered.filter((receipt) => receipt.category === category);
     }
-    
     setFilteredReceipts(filtered);
   };
 
@@ -148,61 +146,28 @@ const ReceiptsListScreen = () => {
       <View style={styles.receiptHeader}>
         <View style={styles.merchantContainer}>
           {item.image_path && (
-            <Image
-              source={{ uri: item.image_path }}
-              style={styles.thumbnailImage}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: item.image_path }} style={styles.thumbnailImage} resizeMode="cover" />
           )}
-          <Text style={styles.merchantName}>{item.merchant_name || 'Unknown Merchant'}</Text>
-          {item.notes && (
-            <View style={styles.notesIndicator}>
-              <Ionicons name="document-text-outline" size={12} color="#666" />
-              <Text style={styles.notesText} numberOfLines={1}>
-                {item.notes}
-              </Text>
-            </View>
-          )}
+          <View>
+            <Text style={styles.merchantName}>{item.merchant_name || 'Unknown Merchant'}</Text>
+            <Text style={styles.receiptDate}>{formatDate(item.transaction_date)}</Text>
+          </View>
         </View>
-        <View
-          style={[
-            styles.confidenceBadge,
-            { backgroundColor: getConfidenceColor(item.confidence_score || 0) },
-          ]}
-        >
-          <Text style={styles.confidenceBadgeText}>
+        <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(item.confidence_score || 0) + '20' }]}>
+          <Text style={[styles.confidenceText, { color: getConfidenceColor(item.confidence_score || 0) }]}>
             {getConfidenceText(item.confidence_score || 0)}
           </Text>
         </View>
       </View>
-
-      <View style={styles.receiptDetails}>
-        <View style={styles.detailItem}>
-          <Ionicons name="calendar-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{formatDate(item.transaction_date)}</Text>
-        </View>
-        <View style={styles.detailItem}>
-          <Ionicons name="cash-outline" size={16} color="#666" />
-          <Text style={[styles.detailText, styles.totalAmount]}>
-            {formatCurrency(item.total_amount || 0, item.currency || '$')}
-          </Text>
-        </View>
-      </View>
-
       <View style={styles.receiptFooter}>
-        <View style={styles.detailItem}>
-          <Ionicons name="document-text-outline" size={14} color="#999" />
-          <Text style={styles.footerText}>{item.filename || 'receipt.jpg'}</Text>
-        </View>
-        <View style={styles.detailItem}>
-          <Ionicons name="time-outline" size={14} color="#999" />
-          <Text style={styles.footerText}>
-            {new Date(item.created_at).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </Text>
-        </View>
+        <Text style={styles.receiptAmount}>
+          {formatCurrency(item.total_amount || 0, item.currency || '$')}
+        </Text>
+        {item.category && (
+          <View style={styles.categoryBadge}>
+            <Text style={styles.categoryText}>{item.category}</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -218,63 +183,47 @@ const ReceiptsListScreen = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>My Receipts</Text>
-        <Text style={styles.subtitle}>
-          {filteredReceipts.length} {filteredReceipts.length === 1 ? 'receipt' : 'receipts'}
-        </Text>
-      </View>
+      <LinearGradient
+        colors={['#4CAF50', '#2196F3']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>My Receipts</Text>
+            <Text style={styles.headerSubtitle}>
+              {filteredReceipts.length} {filteredReceipts.length === 1 ? 'receipt' : 'receipts'}
+            </Text>
+          </View>
+          <View style={styles.headerIcon}>
+            <Ionicons name="receipt" size={28} color="#fff" />
+          </View>
+        </View>
+      </LinearGradient>
 
       <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={20} color="#666" style={styles.searchIcon} />
+        <Ionicons name="search-outline" size={20} color="#999" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search receipts..."
+          placeholderTextColor="#999"
           value={searchQuery}
           onChangeText={handleSearch}
-          placeholderTextColor="#999"
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => handleSearch('')}>
-            <Ionicons name="close-circle" size={20} color="#666" />
+            <Ionicons name="close-circle" size={20} color="#999" />
           </TouchableOpacity>
         )}
       </View>
-
-      <ScrollView horizontal style={styles.categoryFilters} showsHorizontalScrollIndicator={false}>
-        <TouchableOpacity
-          style={[styles.categoryChip, !filterCategory && styles.categoryChipActive]}
-          onPress={() => {
-            setFilterCategory(null);
-            filterReceipts(searchQuery, null);
-          }}
-        >
-          <Text style={[styles.categoryChipText, !filterCategory && styles.categoryChipTextActive]}>All</Text>
-        </TouchableOpacity>
-        {CATEGORIES.map((cat) => (
-          <TouchableOpacity
-            key={cat.id}
-            style={[styles.categoryChip, filterCategory === cat.id && styles.categoryChipActive]}
-            onPress={() => {
-              setFilterCategory(cat.id);
-              filterReceipts(searchQuery, cat.id);
-            }}
-          >
-            <Text style={[styles.categoryChipText, filterCategory === cat.id && styles.categoryChipTextActive]}>
-              {cat.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
 
       <FlatList
         data={filteredReceipts}
         renderItem={renderReceiptItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4CAF50" />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="receipt-outline" size={64} color="#ccc" />
@@ -286,12 +235,9 @@ const ReceiptsListScreen = () => {
         }
       />
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
+      <FloatingScanButton />
+
+      <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -300,78 +246,23 @@ const ReceiptsListScreen = () => {
                 <Ionicons name="close" size={28} color="#333" />
               </TouchableOpacity>
             </View>
-
             {selectedReceipt && (
               <ScrollView style={styles.modalBody}>
                 <View style={styles.modalField}>
                   <Text style={styles.modalLabel}>Merchant</Text>
                   <Text style={styles.modalValue}>{selectedReceipt.merchant_name || 'N/A'}</Text>
                 </View>
-
-                {selectedReceipt.merchant_address && (
-                  <View style={styles.modalField}>
-                    <Text style={styles.modalLabel}>Address</Text>
-                    <Text style={styles.modalValue}>{selectedReceipt.merchant_address}</Text>
-                  </View>
-                )}
-
-                <View style={styles.modalRow}>
-                  <View style={[styles.modalField, styles.modalHalfField]}>
-                    <Text style={styles.modalLabel}>Date</Text>
-                    <Text style={styles.modalValue}>{formatDate(selectedReceipt.transaction_date)}</Text>
-                  </View>
-                  <View style={[styles.modalField, styles.modalHalfField]}>
-                    <Text style={styles.modalLabel}>Currency</Text>
-                    <Text style={styles.modalValue}>{selectedReceipt.currency || '$'}</Text>
-                  </View>
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>Date</Text>
+                  <Text style={styles.modalValue}>{formatDate(selectedReceipt.transaction_date)}</Text>
                 </View>
-
                 <View style={[styles.modalField, styles.modalTotalField]}>
                   <Text style={styles.modalTotalLabel}>Total</Text>
                   <Text style={styles.modalTotalValue}>
                     {formatCurrency(selectedReceipt.total_amount || 0, selectedReceipt.currency || '$')}
                   </Text>
                 </View>
-
-                <View style={styles.modalField}>
-                  <Text style={styles.modalLabel}>Confidence Score</Text>
-                  <View style={styles.modalConfidenceContainer}>
-                    <View
-                      style={[
-                        styles.modalConfidenceBar,
-                        { 
-                          backgroundColor: getConfidenceColor(selectedReceipt.confidence_score || 0),
-                          width: Math.round((selectedReceipt.confidence_score || 0) * 100) + '%'
-                        },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.modalConfidenceText}>
-                    {getConfidenceText(selectedReceipt.confidence_score || 0)} 
-                    ({Math.round((selectedReceipt.confidence_score || 0) * 100)}%)
-                  </Text>
-                </View>
-
-                {selectedReceipt.notes && (
-                  <View style={styles.modalField}>
-                    <Text style={styles.modalLabel}>Notes</Text>
-                    <Text style={styles.modalValue}>{selectedReceipt.notes}</Text>
-                  </View>
-                )}
-
-                {selectedReceipt.category && (
-                  <View style={styles.modalField}>
-                    <Text style={styles.modalLabel}>Category</Text>
-                    <Text style={styles.modalValue}>
-                      {CATEGORIES.find(c => c.id === selectedReceipt.category)?.label || selectedReceipt.category}
-                    </Text>
-                  </View>
-                )}
-
-                <TouchableOpacity
-                  style={styles.viewReceiptButton}
-                  onPress={() => handleViewReceipt(selectedReceipt)}
-                >
+                <TouchableOpacity style={styles.viewReceiptButton} onPress={() => handleViewReceipt(selectedReceipt)}>
                   <Text style={styles.viewReceiptButtonText}>View Full Receipt</Text>
                 </TouchableOpacity>
               </ScrollView>
@@ -384,300 +275,46 @@ const ReceiptsListScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#666',
-  },
-  header: {
-    backgroundColor: '#fff',
-    padding: 16,
-    paddingTop: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    margin: 12,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 44,
-    fontSize: 16,
-    color: '#333',
-  },
-  categoryFilters: {
-    flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: '#f5f5f5',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#e0e0e0',
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#cccccc',
-  },
-  categoryChipActive: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
-  },
-  categoryChipText: {
-    fontSize: 14,
-    color: '#333333',
-    fontWeight: '500',
-  },
-  categoryChipTextActive: {
-    color: '#ffffff',
-  },
-  listContainer: {
-    padding: 12,
-    paddingBottom: 20,
-  },
-  thumbnailImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  receiptCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  receiptHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  merchantContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  merchantName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    flex: 1,
-  },
-  notesIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    width: '100%',
-  },
-  notesText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 4,
-    flex: 1,
-  },
-  confidenceBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  confidenceBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  receiptDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  detailText: {
-    fontSize: 14,
-    color: '#333',
-    marginLeft: 4,
-  },
-  totalAmount: {
-    fontWeight: '600',
-    color: '#4CAF50',
-  },
-  receiptFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#999',
-    marginLeft: 4,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#666',
-    marginTop: 12,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  modalBody: {
-    padding: 20,
-  },
-  modalField: {
-    marginBottom: 12,
-  },
-  modalHalfField: {
-    flex: 1,
-  },
-  modalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  modalLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#999',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  modalValue: {
-    fontSize: 16,
-    color: '#333',
-    marginTop: 2,
-  },
-  modalTotalField: {
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    paddingTop: 12,
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  modalTotalLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  modalTotalValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-    marginTop: 4,
-  },
-  modalConfidenceContainer: {
-    height: 6,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginTop: 6,
-  },
-  modalConfidenceBar: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  modalConfidenceText: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  viewReceiptButton: {
-    backgroundColor: '#4CAF50',
-    padding: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 20,
-  },
-  viewReceiptButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' },
+  loadingText: { marginTop: 12, fontSize: 16, color: '#666' },
+  header: { paddingTop: 48, paddingBottom: 20, paddingHorizontal: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  headerIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', margin: 12, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e0e0e0' },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, height: 44, fontSize: 16, color: '#333' },
+  listContainer: { padding: 12, paddingBottom: 20 },
+  receiptCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  receiptHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  merchantContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  thumbnailImage: { width: 44, height: 44, borderRadius: 8, marginRight: 8 },
+  merchantName: { fontSize: 16, fontWeight: '600', color: '#1A2332' },
+  receiptDate: { fontSize: 12, color: '#6B7A8F', marginTop: 2 },
+  confidenceBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, alignSelf: 'flex-start' },
+  confidenceText: { fontSize: 10, fontWeight: '600' },
+  receiptFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+  receiptAmount: { fontSize: 16, fontWeight: '700', color: '#1A2332' },
+  categoryBadge: { paddingHorizontal: 10, paddingVertical: 3, backgroundColor: '#E8F5E9', borderRadius: 12 },
+  categoryText: { fontSize: 11, color: '#4CAF50', fontWeight: '500' },
+  emptyContainer: { alignItems: 'center', paddingVertical: 60 },
+  emptyText: { fontSize: 18, fontWeight: '600', color: '#666', marginTop: 12 },
+  emptySubtext: { fontSize: 14, color: '#999', marginTop: 4, textAlign: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e0e0e0' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+  modalBody: { padding: 20 },
+  modalField: { marginBottom: 12 },
+  modalLabel: { fontSize: 12, fontWeight: '600', color: '#999', textTransform: 'uppercase' },
+  modalValue: { fontSize: 16, color: '#333', marginTop: 2 },
+  modalTotalField: { borderTopWidth: 1, borderTopColor: '#e0e0e0', paddingTop: 12, marginTop: 4, marginBottom: 16 },
+  modalTotalLabel: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+  modalTotalValue: { fontSize: 24, fontWeight: 'bold', color: '#4CAF50' },
+  viewReceiptButton: { backgroundColor: '#4CAF50', padding: 16, borderRadius: 10, alignItems: 'center', marginBottom: 20 },
+  viewReceiptButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
 
 export default ReceiptsListScreen;
-
-
-
-
-
-
-
-
