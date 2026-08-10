@@ -19,6 +19,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import FloatingScanButton from '../components/FloatingScanButton';
 
+// Category definitions
+const CATEGORIES = [
+  { id: 'food', label: '🍔 Food', color: '#FF5722' },
+  { id: 'transport', label: '🚗 Transport', color: '#2196F3' },
+  { id: 'shopping', label: '🛍️ Shopping', color: '#9C27B0' },
+  { id: 'utilities', label: '💡 Utilities', color: '#FFC107' },
+  { id: 'entertainment', label: '🎬 Entertainment', color: '#E91E63' },
+  { id: 'health', label: '🏥 Health', color: '#4CAF50' },
+  { id: 'travel', label: '✈️ Travel', color: '#00BCD4' },
+  { id: 'other', label: '📌 Other', color: '#607D8B' },
+];
+
 interface Receipt {
   id: string;
   merchant_name: string;
@@ -45,7 +57,7 @@ const ReceiptsListScreen = () => {
   const [filteredReceipts, setFilteredReceipts] = useState<Receipt[]>([]);
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const API_URL = 'https://readreceipts-api-irch.onrender.com';
 
@@ -55,7 +67,7 @@ const ReceiptsListScreen = () => {
       const data = await response.json();
       if (data.receipts) {
         setReceipts(data.receipts);
-        setFilteredReceipts(data.receipts);
+        filterReceipts(searchQuery, selectedCategory, data.receipts);
       }
     } catch (error) {
       console.error('Error fetching receipts:', error);
@@ -77,24 +89,33 @@ const ReceiptsListScreen = () => {
     fetchReceipts();
   };
 
-  const filterReceipts = (query: string, category: string | null) => {
-    let filtered = receipts;
+  const filterReceipts = (query: string, category: string | null, receiptData?: Receipt[]) => {
+    const data = receiptData || receipts;
+    let filtered = data;
+    
     if (query.trim() !== '') {
       filtered = filtered.filter(
         (receipt) =>
           receipt.merchant_name.toLowerCase().includes(query.toLowerCase()) ||
-          receipt.merchant_address.toLowerCase().includes(query.toLowerCase())
+          (receipt.merchant_address && receipt.merchant_address.toLowerCase().includes(query.toLowerCase()))
       );
     }
+    
     if (category) {
       filtered = filtered.filter((receipt) => receipt.category === category);
     }
+    
     setFilteredReceipts(filtered);
   };
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
-    filterReceipts(text, filterCategory);
+    filterReceipts(text, selectedCategory);
+  };
+
+  const handleCategorySelect = (categoryId: string | null) => {
+    setSelectedCategory(categoryId);
+    filterReceipts(searchQuery, categoryId);
   };
 
   const handleReceiptPress = (receipt: Receipt) => {
@@ -105,6 +126,39 @@ const ReceiptsListScreen = () => {
   const handleViewReceipt = (receipt: Receipt) => {
     setModalVisible(false);
     (navigation as any).navigate('Confirmation', { receiptId: receipt.id });
+  };
+
+  const handleDeleteReceipt = async () => {
+    if (!selectedReceipt) return;
+    
+    Alert.alert(
+      'Delete Receipt',
+      'Are you sure you want to delete this receipt?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await fetch(API_URL + '/receipts/' + selectedReceipt.id, {
+                method: 'DELETE',
+              });
+              
+              if (response.ok) {
+                setModalVisible(false);
+                Alert.alert('Success', 'Receipt deleted!');
+                fetchReceipts();
+              } else {
+                Alert.alert('Error', 'Failed to delete receipt');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Network error');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const getConfidenceColor = (score: number) => {
@@ -137,6 +191,10 @@ const ReceiptsListScreen = () => {
     return currency + ' ' + amount.toFixed(2);
   };
 
+  const getCategoryCount = (categoryId: string): number => {
+    return receipts.filter(r => r.category === categoryId).length;
+  };
+
   const renderReceiptItem = ({ item }: { item: Receipt }) => (
     <TouchableOpacity
       style={styles.receiptCard}
@@ -165,7 +223,9 @@ const ReceiptsListScreen = () => {
         </Text>
         {item.category && (
           <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{item.category}</Text>
+            <Text style={styles.categoryText}>
+              {CATEGORIES.find(c => c.id === item.category)?.label || item.category}
+            </Text>
           </View>
         )}
       </View>
@@ -218,6 +278,44 @@ const ReceiptsListScreen = () => {
         )}
       </View>
 
+      {/* Category Filter Bar */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.categoryFilterContainer}
+        contentContainerStyle={styles.categoryFilterContent}
+      >
+        <TouchableOpacity
+          style={[styles.categoryChip, selectedCategory === null && styles.categoryChipActive]}
+          onPress={() => handleCategorySelect(null)}
+        >
+          <Text style={[styles.categoryChipText, selectedCategory === null && styles.categoryChipTextActive]}>
+            All ({receipts.length})
+          </Text>
+        </TouchableOpacity>
+        {CATEGORIES.map((cat) => {
+          const count = getCategoryCount(cat.id);
+          if (count === 0) return null;
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              style={[
+                styles.categoryChip,
+                selectedCategory === cat.id && styles.categoryChipActive,
+              ]}
+              onPress={() => handleCategorySelect(cat.id)}
+            >
+              <Text style={[
+                styles.categoryChipText,
+                selectedCategory === cat.id && styles.categoryChipTextActive,
+              ]}>
+                {cat.label} ({count})
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
       <FlatList
         data={filteredReceipts}
         renderItem={renderReceiptItem}
@@ -242,9 +340,14 @@ const ReceiptsListScreen = () => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Receipt Details</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={28} color="#333" />
-              </TouchableOpacity>
+              <View style={styles.modalHeaderActions}>
+                <TouchableOpacity onPress={handleDeleteReceipt} style={styles.deleteButton}>
+                  <Ionicons name="trash-outline" size={24} color="#F44336" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Ionicons name="close" size={28} color="#333" />
+                </TouchableOpacity>
+              </View>
             </View>
             {selectedReceipt && (
               <ScrollView style={styles.modalBody}>
@@ -286,6 +389,12 @@ const styles = StyleSheet.create({
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', margin: 12, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e0e0e0' },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, height: 44, fontSize: 16, color: '#333' },
+  categoryFilterContainer: { maxHeight: 50, marginBottom: 4 },
+  categoryFilterContent: { paddingHorizontal: 12, paddingVertical: 4 },
+  categoryChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f0f0f0', marginRight: 8, borderWidth: 1, borderColor: 'transparent' },
+  categoryChipActive: { backgroundColor: '#4CAF50', borderColor: '#4CAF50' },
+  categoryChipText: { fontSize: 13, color: '#666' },
+  categoryChipTextActive: { color: '#fff' },
   listContainer: { padding: 12, paddingBottom: 20 },
   receiptCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   receiptHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -305,7 +414,9 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e0e0e0' },
+  modalHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+  deleteButton: { padding: 4 },
   modalBody: { padding: 20 },
   modalField: { marginBottom: 12 },
   modalLabel: { fontSize: 12, fontWeight: '600', color: '#999', textTransform: 'uppercase' },
