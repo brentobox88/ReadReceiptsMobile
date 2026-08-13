@@ -1,4 +1,4 @@
-﻿// src/screens/CameraScreen.tsx
+// src/screens/CameraScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -41,7 +41,7 @@ const CameraScreen = () => {
       formData.append('file', {
         uri: imageUri,
         type: 'image/jpeg',
-        name: 'receipt.jpg',
+        name: "receipt_${Date.now()}.jpg",
       } as any);
 
       const response = await fetch(API_URL + '/upload', {
@@ -265,3 +265,4 @@ const styles = StyleSheet.create({
 });
 
 export default CameraScreen;
+
