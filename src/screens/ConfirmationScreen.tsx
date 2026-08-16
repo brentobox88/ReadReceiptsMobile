@@ -1,4 +1,4 @@
-﻿// src/screens/ConfirmationScreen.tsx
+// src/screens/ConfirmationScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -16,20 +16,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const DOCUMENT_TYPES = [
-  { id: 'expense', label: '📄 Expense' },
-  { id: 'invoice', label: '📊 Income' },
-  { id: 'tax', label: '🧾 Tax' },
+  { id: 'expense', label: '?? Expense' },
+  { id: 'invoice', label: '?? Income' },
+  { id: 'tax', label: '?? Tax' },
 ];
 
 const CATEGORIES = [
-  { id: 'food', label: '🍔 Food' },
-  { id: 'transport', label: '🚗 Transport' },
-  { id: 'shopping', label: '🛍️ Shopping' },
-  { id: 'utilities', label: '💡 Utilities' },
-  { id: 'entertainment', label: '🎬 Entertainment' },
-  { id: 'health', label: '🏥 Health' },
-  { id: 'travel', label: '✈️ Travel' },
-  { id: 'other', label: '📌 Other' },
+  { id: 'food', label: '?? Food' },
+  { id: 'transport', label: '?? Transport' },
+  { id: 'shopping', label: '??? Shopping' },
+  { id: 'utilities', label: '?? Utilities' },
+  { id: 'entertainment', label: '?? Entertainment' },
+  { id: 'health', label: '?? Health' },
+  { id: 'travel', label: '?? Travel' },
+  { id: 'other', label: '?? Other' },
 ];
 
 const ConfirmationScreen = () => {
@@ -360,3 +360,5 @@ const styles = StyleSheet.create({
 });
 
 export default ConfirmationScreen;
+
+

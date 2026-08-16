@@ -1,4 +1,4 @@
-// src/screens/CameraScreen.tsx
+﻿// src/screens/CameraScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -38,10 +38,12 @@ const CameraScreen = () => {
     setLoading(true);
     try {
       const formData = new FormData();
+      const filename = 'receipt_' + Date.now() + '.jpg';
+      
       formData.append('file', {
         uri: imageUri,
         type: 'image/jpeg',
-        name: "receipt_${Date.now()}.jpg",
+        name: filename,
       } as any);
 
       const response = await fetch(API_URL + '/upload', {
@@ -55,15 +57,16 @@ const CameraScreen = () => {
       const data = await response.json();
       
       if (data.success) {
-        // Auto-navigate to Confirmation without alert
+        // Auto-navigate to Confirmation
         (navigation as any).navigate('Confirmation', {
           receiptId: data.receipt_id || data.id,
-          imageUri: data.image_path || imageUri,
+          imageUri: imageUri,
         });
       } else {
         Alert.alert('Error', data.error || 'Failed to upload receipt');
       }
     } catch (error: any) {
+      console.error('Upload error:', error);
       Alert.alert('Upload Error', error.message || 'Failed to upload receipt');
     } finally {
       setLoading(false);
@@ -265,4 +268,3 @@ const styles = StyleSheet.create({
 });
 
 export default CameraScreen;
-

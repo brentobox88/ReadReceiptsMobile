@@ -1,4 +1,4 @@
-﻿// src/screens/ReceiptsListScreen.tsx
+// src/screens/ReceiptsListScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -21,14 +21,14 @@ import FloatingScanButton from '../components/FloatingScanButton';
 
 // Category definitions
 const CATEGORIES = [
-  { id: 'food', label: '🍔 Food', color: '#FF5722' },
-  { id: 'transport', label: '🚗 Transport', color: '#2196F3' },
-  { id: 'shopping', label: '🛍️ Shopping', color: '#9C27B0' },
-  { id: 'utilities', label: '💡 Utilities', color: '#FFC107' },
-  { id: 'entertainment', label: '🎬 Entertainment', color: '#E91E63' },
-  { id: 'health', label: '🏥 Health', color: '#4CAF50' },
-  { id: 'travel', label: '✈️ Travel', color: '#00BCD4' },
-  { id: 'other', label: '📌 Other', color: '#607D8B' },
+  { id: 'food', label: '?? Food', color: '#FF5722' },
+  { id: 'transport', label: '?? Transport', color: '#2196F3' },
+  { id: 'shopping', label: '??? Shopping', color: '#9C27B0' },
+  { id: 'utilities', label: '?? Utilities', color: '#FFC107' },
+  { id: 'entertainment', label: '?? Entertainment', color: '#E91E63' },
+  { id: 'health', label: '?? Health', color: '#4CAF50' },
+  { id: 'travel', label: '?? Travel', color: '#00BCD4' },
+  { id: 'other', label: '?? Other', color: '#607D8B' },
 ];
 
 interface Receipt {
@@ -125,7 +125,7 @@ const ReceiptsListScreen = () => {
 
   const handleViewReceipt = (receipt: Receipt) => {
     setModalVisible(false);
-    (navigation as any).navigate('Confirmation', { receiptId: receipt.id });
+    (navigation as any).navigate('Confirmation', { receiptId: receipt.id, imageUri: receipt.image_path });
   };
 
   const handleDeleteReceipt = async () => {
@@ -204,7 +204,7 @@ const ReceiptsListScreen = () => {
       <View style={styles.receiptHeader}>
         <View style={styles.merchantContainer}>
           {item.image_path && (
-            <Image source={{ uri: item.image_path }} style={styles.thumbnailImage} resizeMode="cover" />
+            <Image source={{ uri: item.image_path && item.image_path.startsWith("data:image") ? item.image_path : API_URL + "/" + item.image_path }} style={styles.thumbnailImage} resizeMode="cover" />
           )}
           <View>
             <Text style={styles.merchantName}>{item.merchant_name || 'Unknown Merchant'}</Text>
@@ -398,6 +398,12 @@ const styles = StyleSheet.create({
   listContainer: { padding: 12, paddingBottom: 20 },
   receiptCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   receiptHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  receiptImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 10,
+  },
   merchantContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   thumbnailImage: { width: 44, height: 44, borderRadius: 8, marginRight: 8 },
   merchantName: { fontSize: 16, fontWeight: '600', color: '#1A2332' },
@@ -429,3 +435,10 @@ const styles = StyleSheet.create({
 });
 
 export default ReceiptsListScreen;
+
+
+
+
+
+
+
