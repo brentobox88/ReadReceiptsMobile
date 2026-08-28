@@ -163,7 +163,7 @@ const ConfirmationScreen = () => {
 
       <ScrollView style={styles.content}>
         {imageUri && (
-          <Image source={{ uri: imageUri }} style={styles.receiptImage} resizeMode="cover" />
+          <Image source={{ uri: imageUri && imageUri.startsWith("uploads/") ? "https://readreceipts-api-irch.onrender.com/" + imageUri : imageUri }} style={styles.receiptImage} resizeMode="cover" />
         )}
 
         {receipt ? (
@@ -360,5 +360,6 @@ const styles = StyleSheet.create({
 });
 
 export default ConfirmationScreen;
+
 
 

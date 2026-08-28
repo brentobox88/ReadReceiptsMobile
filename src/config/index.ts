@@ -1,4 +1,4 @@
-﻿// src/config/index.ts
+// src/config/index.ts
 // Environment configuration for the app
 
 export const Config = {
@@ -13,4 +13,6 @@ export const Config = {
 };
 
 export default Config;
+
+
 
