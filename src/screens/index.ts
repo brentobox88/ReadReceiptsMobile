@@ -1,12 +1,11 @@
-export { default as CameraScreen } from './CameraScreen';
+﻿export { default as CameraScreen } from './CameraScreen';
 export { default as ConfirmationScreen } from './ConfirmationScreen';
 export { default as ReceiptsListScreen } from './ReceiptsListScreen';
 export { default as ExportScreen } from './ExportScreen';
 export { default as ProfileScreen } from './ProfileScreen';
-                                    export { default as SplashScreen } from './SplashScreen';
+export { default as SplashScreen } from './SplashScreen';
 export { default as DashboardScreen } from './DashboardScreen';
 export { default as SubscriptionScreen } from './SubscriptionScreen';
 export { default as AuthScreen } from './AuthScreen';
-
-
 export { default as ReportsScreen } from './ReportsScreen';
+export { default as BatchConfirmationScreen } from './BatchConfirmationScreen';

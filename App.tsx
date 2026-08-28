@@ -16,6 +16,7 @@ import {
   AuthScreen,
   ExportScreen,
   ReportsScreen,
+  BatchConfirmationScreen,
 } from './src/screens';
 
 const Tab = createBottomTabNavigator();
@@ -159,8 +160,16 @@ export default function App() {
               presentation: 'modal',
             }}
           />
+          <Stack.Screen
+            name="BatchConfirmation"
+            component={BatchConfirmationScreen}
+            options={{ title: "Batch Upload", presentation: "modal" }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </SubscriptionProvider>
   );
 }
+
+
+
