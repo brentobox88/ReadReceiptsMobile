@@ -1,4 +1,4 @@
-// App.tsx - ReadReceipts with Authentication
+﻿// App.tsx - ReadReceipts with Authentication
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -16,7 +16,7 @@ import {
   AuthScreen,
   ExportScreen,
   ReportsScreen,
-  BatchConfirmationScreen,
+  BatchUploadScreen,
 } from './src/screens';
 
 const Tab = createBottomTabNavigator();
@@ -161,15 +161,14 @@ export default function App() {
             }}
           />
           <Stack.Screen
-            name="BatchConfirmation"
-            component={BatchConfirmationScreen}
-            options={{ title: "Batch Upload", presentation: "modal" }}
+            name="BatchUpload"
+            component={BatchUploadScreen}
+            options={{ title: 'Batch Upload', presentation: 'modal' }}
           />
         </Stack.Navigator>
       </NavigationContainer>
     </SubscriptionProvider>
   );
 }
-
 
 

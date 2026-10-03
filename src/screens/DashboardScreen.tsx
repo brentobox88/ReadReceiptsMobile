@@ -1,4 +1,4 @@
-// src/screens/DashboardScreen.tsx
+﻿// src/screens/DashboardScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -114,7 +114,7 @@ const DashboardScreen = () => {
   }
 
   return (
-    <View style={styles.container}>`n      <FloatingScanButton />
+    <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -188,6 +188,13 @@ const DashboardScreen = () => {
             <Text style={styles.quickActionLabel}>Reports</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('BatchUpload')}>
+            <View style={[styles.quickActionIcon, { backgroundColor: '#F3E5F5' }]}>
+              <Ionicons name="cloud-upload" size={24} color="#9C27B0" />
+            </View>
+            <Text style={styles.quickActionLabel}>Batch</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('Export')}>
             <View style={[styles.quickActionIcon, { backgroundColor: '#F3E5F5' }]}>
               <Ionicons name="download" size={24} color="#9C27B0" />
@@ -201,7 +208,7 @@ const DashboardScreen = () => {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Receipts</Text>
             <TouchableOpacity onPress={() => (navigation as any).navigate('Receipts')}>
-              <Text style={styles.seeAll}>See All ?</Text>
+              <Text style={styles.seeAll}>See All →</Text>
             </TouchableOpacity>
           </View>
 
@@ -445,5 +452,3 @@ const styles = StyleSheet.create({
 });
 
 export default DashboardScreen;
-
-

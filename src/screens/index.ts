@@ -8,4 +8,5 @@ export { default as DashboardScreen } from './DashboardScreen';
 export { default as SubscriptionScreen } from './SubscriptionScreen';
 export { default as AuthScreen } from './AuthScreen';
 export { default as ReportsScreen } from './ReportsScreen';
-export { default as BatchConfirmationScreen } from './BatchConfirmationScreen';
+export { default as BatchUploadScreen } from './BatchUploadScreen';
+
