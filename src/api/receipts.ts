@@ -1,8 +1,8 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
 // Choose one based on your testing environment:
 // For Android Emulator:
-const API_BASE_URL = 'https://readreceipts-api-irch.onrender.com';
+const API_BASE_URL = 'https://readreceipts-api-sxyz.onrender.com';
 // For iOS Simulator:
 // const API_BASE_URL = 'http://localhost:8000';
 // For Physical Device:
@@ -61,3 +61,4 @@ export const getReceipts = async () => {
 };
 
 export default api;
+

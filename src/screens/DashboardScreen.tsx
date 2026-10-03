@@ -35,7 +35,7 @@ const DashboardScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const API_URL = 'https://readreceipts-api-irch.onrender.com';
+  const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
 
   const fetchReceipts = async () => {
     try {
@@ -452,3 +452,4 @@ const styles = StyleSheet.create({
 });
 
 export default DashboardScreen;
+

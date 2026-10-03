@@ -1,7 +1,7 @@
 ﻿// src/api/batches.ts
 import axios from 'axios';
 
-const API_URL = 'https://readreceipts-api-irch.onrender.com';
+const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
 
 export interface BatchResponse {
   success: boolean;

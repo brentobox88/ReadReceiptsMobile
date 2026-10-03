@@ -22,7 +22,7 @@ const CameraScreen = () => {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [hasGalleryPermission, setHasGalleryPermission] = useState<boolean | null>(null);
 
-  const API_URL = 'https://readreceipts-api-irch.onrender.com';
+  const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
 
   useEffect(() => {
     (async () => {
@@ -268,3 +268,4 @@ const styles = StyleSheet.create({
 });
 
 export default CameraScreen;
+

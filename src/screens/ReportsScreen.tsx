@@ -1,4 +1,4 @@
-// src/screens/ReportsScreen.tsx
+﻿// src/screens/ReportsScreen.tsx
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
@@ -130,7 +130,7 @@ const ReportsScreen = () => {
   const [data, setData] = useState<FinancialData | null>(null);
   const [showContent, setShowContent] = useState(false);
   
-  const API_URL = 'https://readreceipts-api-irch.onrender.com';
+  const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
 
   useEffect(() => {
     if (data && !loading) {
@@ -910,6 +910,7 @@ const styles = StyleSheet.create({
 });
 
 export default ReportsScreen;
+
 
 
 

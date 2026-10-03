@@ -1,4 +1,4 @@
-// src/screens/ConfirmationScreen.tsx
+﻿// src/screens/ConfirmationScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -47,7 +47,7 @@ const ConfirmationScreen = () => {
   const [documentType, setDocumentType] = useState('expense');
   const [category, setCategory] = useState('');
 
-  const API_URL = 'https://readreceipts-api-irch.onrender.com';
+  const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
 
   useEffect(() => {
     if (receiptId) {
@@ -163,7 +163,7 @@ const ConfirmationScreen = () => {
 
       <ScrollView style={styles.content}>
         {imageUri && (
-          <Image source={{ uri: imageUri && imageUri.startsWith("uploads/") ? "https://readreceipts-api-irch.onrender.com/" + imageUri : imageUri }} style={styles.receiptImage} resizeMode="cover" />
+          <Image source={{ uri: imageUri && imageUri.startsWith("uploads/") ? "https://readreceipts-api-sxyz.onrender.com/" + imageUri : imageUri }} style={styles.receiptImage} resizeMode="cover" />
         )}
 
         {receipt ? (
@@ -360,6 +360,7 @@ const styles = StyleSheet.create({
 });
 
 export default ConfirmationScreen;
+
 
 
 

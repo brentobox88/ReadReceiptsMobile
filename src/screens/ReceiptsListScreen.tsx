@@ -1,4 +1,4 @@
-// src/screens/ReceiptsListScreen.tsx
+﻿// src/screens/ReceiptsListScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -59,7 +59,7 @@ const ReceiptsListScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const API_URL = 'https://readreceipts-api-irch.onrender.com';
+  const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
 
   const fetchReceipts = async () => {
     try {
@@ -435,6 +435,7 @@ const styles = StyleSheet.create({
 });
 
 export default ReceiptsListScreen;
+
 
 
 

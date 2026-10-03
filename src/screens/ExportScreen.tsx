@@ -46,7 +46,7 @@ const ExportScreen = () => {
   const [exporting, setExporting] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState<'csv' | 'json'>('csv');
 
-  const API_URL = 'https://readreceipts-api-irch.onrender.com';
+  const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
 
   const fetchReceipts = async () => {
     try {
@@ -446,3 +446,4 @@ const styles = StyleSheet.create({
 });
 
 export default ExportScreen;
+
