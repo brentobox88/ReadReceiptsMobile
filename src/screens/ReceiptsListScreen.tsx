@@ -1,4 +1,4 @@
-// src/screens/ReceiptsListScreen.tsx
+﻿// src/screens/ReceiptsListScreen.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { Calendar } from 'react-native-calendars';
 import { LinearGradient } from 'expo-linear-gradient';
 import FloatingScanButton from '../components/FloatingScanButton';
 import { BottomSheetModal, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
@@ -30,14 +31,14 @@ import {
 } from '../utils/filters';
 
 const CATEGORIES = [
-  { id: 'food', label: '🍔 Food', color: '#FF5722' },
-  { id: 'transport', label: '🚗 Transport', color: '#2196F3' },
-  { id: 'shopping', label: '🛍 Shopping', color: '#9C27B0' },
-  { id: 'utilities', label: '💡 Utilities', color: '#FFC107' },
-  { id: 'entertainment', label: '🎬 Entertainment', color: '#E91E63' },
-  { id: 'health', label: '🥗 Health', color: '#4CAF50' },
-  { id: 'travel', label: '✈️ Travel', color: '#00BCD4' },
-  { id: 'other', label: '📦 Other', color: '#607D8B' },
+  { id: 'food', label: 'Food', icon: 'fast-food' },
+  { id: 'transport', label: 'Transport', icon: 'car' },
+  { id: 'shopping', label: 'Shopping', icon: 'bag' },
+  { id: 'utilities', label: 'Utilities', icon: 'bulb' },
+  { id: 'entertainment', label: 'Entertainment', icon: 'film' },
+  { id: 'health', label: 'Health', icon: 'fitness' },
+  { id: 'travel', label: 'Travel', icon: 'airplane' },
+  { id: 'other', label: 'Other', icon: 'cube' },
 ];
 
 interface Receipt {
@@ -67,6 +68,12 @@ const ReceiptsListScreen = () => {
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [filters, setFilters] = useState<ReceiptFilters>(DEFAULT_FILTERS);
+  const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+
+  const [dateFromInput, setDateFromInput] = useState('');
+
+  const [dateToInput, setDateToInput] = useState('');
+  const [datePickerMode, setDatePickerMode] = useState<'from' | 'to' | null>(null);
   const sheetRef = useRef<BottomSheetModal>(null);
   const filterCount = activeFilterCount(filters);
 
@@ -256,7 +263,7 @@ const ReceiptsListScreen = () => {
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <FilterPill count={filterCount} onPress={() => sheetRef.current?.present()} />
+            <FilterPill count={filterCount} onPress={() => { setDateFromInput(filters.startDate || ''); setDateToInput(filters.endDate || ''); setFilterSheetVisible(true); }} />
             <View style={styles.headerIcon}>
               <Ionicons name="receipt" size={28} color="#fff" />
             </View>
@@ -299,98 +306,135 @@ const ReceiptsListScreen = () => {
 
       {/* <FloatingScanButton /> */}
 
-      <BottomSheetModal
-        ref={sheetRef}
-        snapPoints={[500]}
-        enablePanDownToClose
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} />
-        )}
-        handleIndicatorStyle={{ backgroundColor: '#ccc' }}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={filterSheetVisible}
+        onRequestClose={() => setFilterSheetVisible(false)}
       >
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-          <Text style={{ fontSize: 22, fontWeight: '700', marginBottom: 8 }}>Filters</Text>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%' }}>
+            <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={{ fontSize: 22, fontWeight: '700' }}>Filters</Text>
+                <Pressable onPress={() => setFilterSheetVisible(false)}>
+                  <Ionicons name="close" size={28} color="#333" />
+                </Pressable>
+              </View>
 
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Sort by</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {([
-              { key: 'date_desc' as SortOption, label: 'Newest' },
-              { key: 'date_asc' as SortOption, label: 'Oldest' },
-              { key: 'amount_desc' as SortOption, label: 'Highest amount' },
-              { key: 'amount_asc' as SortOption, label: 'Lowest amount' },
-              { key: 'merchant_asc' as SortOption, label: 'Merchant A-Z' },
-            ]).map((s) => (
-              <Pressable
-                key={s.key}
-                onPress={() => setFilters({ ...filters, sort: s.key })}
-                style={[
-                  { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: '#f0f0f0' },
-                  filters.sort === s.key && { backgroundColor: '#111' },
-                ]}
-              >
-                <Text style={{ color: filters.sort === s.key ? '#fff' : '#111', fontWeight: filters.sort === s.key ? '600' : '400' }}>
-                  {s.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Sort by</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {([
+                  { key: 'date_desc' as SortOption, label: 'Newest' },
+                  { key: 'date_asc' as SortOption, label: 'Oldest' },
+                  { key: 'amount_desc' as SortOption, label: 'Highest' },
+                  { key: 'amount_asc' as SortOption, label: 'Lowest' },
+                  { key: 'merchant_asc' as SortOption, label: 'A-Z' },
+                ]).map((s) => (
+                  <Pressable
+                    key={s.key}
+                    onPress={() => setFilters({ ...filters, sort: s.key })}
+                    style={[
+                      { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: '#f0f0f0' },
+                      filters.sort === s.key && { backgroundColor: '#111' },
+                    ]}
+                  >
+                    <Text style={{ color: filters.sort === s.key ? '#fff' : '#111', fontWeight: filters.sort === s.key ? '600' : '400' }}>{s.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
 
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Date range</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Pressable
-              style={{ flex: 1, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ddd' }}
-              onPress={() => {
-                const input = prompt('From (YYYY-MM-DD)');
-                if (input !== null) setFilters({ ...filters, startDate: input.trim() || null });
-              }}
-            >
-              <Text style={{ color: filters.startDate ? '#111' : '#999' }}>{filters.startDate || 'From'}</Text>
-            </Pressable>
-            <Pressable
-              style={{ flex: 1, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ddd' }}
-              onPress={() => {
-                const input = prompt('To (YYYY-MM-DD)');
-                if (input !== null) setFilters({ ...filters, endDate: input.trim() || null });
-              }}
-            >
-              <Text style={{ color: filters.endDate ? '#111' : '#999' }}>{filters.endDate || 'To'}</Text>
-            </Pressable>
-          </View>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Date range</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Pressable
+                  style={{ flex: 1, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#ddd', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                  onPress={() => setDatePickerMode(datePickerMode === 'from' ? null : 'from')}
+                >
+                  <Text style={{ color: dateFromInput ? '#111' : '#999', fontSize: 14 }}>{dateFromInput || 'From'}</Text>
+                  <Ionicons name="calendar-outline" size={16} color="#999" />
+                </Pressable>
+                <Pressable
+                  style={{ flex: 1, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#ddd', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                  onPress={() => setDatePickerMode(datePickerMode === 'to' ? null : 'to')}
+                >
+                  <Text style={{ color: dateToInput ? '#111' : '#999', fontSize: 14 }}>{dateToInput || 'To'}</Text>
+                  <Ionicons name="calendar-outline" size={16} color="#999" />
+                </Pressable>
+              </View>
 
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Category</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {CATEGORIES.map((c) => (
-              <Pressable
-                key={c.id}
-                onPress={() => setFilters({ ...filters, category: filters.category === c.id ? null : c.id })}
-                style={[
-                  { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: '#f0f0f0' },
-                  filters.category === c.id && { backgroundColor: '#111' },
-                ]}
-              >
-                <Text style={{ color: filters.category === c.id ? '#fff' : '#111', fontWeight: filters.category === c.id ? '600' : '400' }}>
-                  {c.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+              {datePickerMode && (
+                <View style={{ marginTop: 12, borderWidth: 1, borderColor: '#ddd', borderRadius: 12, overflow: 'hidden' }}>
+                  <Calendar
+                    current={datePickerMode === 'from' ? (dateFromInput || undefined) : (dateToInput || undefined)}
+                    onDayPress={(day: any) => {
+                      if (datePickerMode === 'from') {
+                        setDateFromInput(day.dateString);
+                      } else {
+                        setDateToInput(day.dateString);
+                      }
+                      setDatePickerMode(null);
+                    }}
+                    markedDates={{
+                      ...(dateFromInput ? { [dateFromInput]: { selected: true, selectedColor: '#4CAF50' } } : {}),
+                      ...(dateToInput ? { [dateToInput]: { selected: true, selectedColor: '#4CAF50' } } : {}),
+                    }}
+                    theme={{
+                      selectedDayBackgroundColor: '#4CAF50',
+                      todayTextColor: '#4CAF50',
+                      arrowColor: '#4CAF50',
+                    }}
+                  />
+                  <Pressable
+                    onPress={() => setDatePickerMode(null)}
+                    style={{ padding: 12, alignItems: 'center', backgroundColor: '#f5f5f5' }}
+                  >
+                    <Text style={{ color: '#666', fontWeight: '600' }}>Cancel</Text>
+                  </Pressable>
+                </View>
+              )}
 
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 32 }}>
-            <Pressable
-              onPress={() => setFilters(DEFAULT_FILTERS)}
-              style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#f0f0f0', alignItems: 'center' }}
-            >
-              <Text style={{ fontWeight: '600' }}>Reset</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => sheetRef.current?.dismiss()}
-              style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#111', alignItems: 'center' }}
-            >
-              <Text style={{ color: '#fff', fontWeight: '600' }}>Apply</Text>
-            </Pressable>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Category</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {CATEGORIES.map((c) => (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => setFilters({ ...filters, category: filters.category === c.id ? null : c.id })}
+                    style={[
+                      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: '#f0f0f0', gap: 4 },
+                      filters.category === c.id && { backgroundColor: '#111' },
+                    ]}
+                  >
+                    <Ionicons name={c.icon as any} size={14} color={filters.category === c.id ? '#fff' : '#111'} />
+                    <Text style={{ color: filters.category === c.id ? '#fff' : '#111', fontWeight: filters.category === c.id ? '600' : '400' }}>{c.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 32 }}>
+                <Pressable
+                  onPress={() => { setFilters(DEFAULT_FILTERS); setDateFromInput(''); setDateToInput(''); }}
+                  style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#f0f0f0', alignItems: 'center' }}
+                >
+                  <Text style={{ fontWeight: '600' }}>Reset</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setFilters({
+                      ...filters,
+                      startDate: dateFromInput.trim() || null,
+                      endDate: dateToInput.trim() || null,
+                    });
+                    setFilterSheetVisible(false);
+                  }}
+                  style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#111', alignItems: 'center' }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '600' }}>Apply</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
           </View>
-        </ScrollView>
-      </BottomSheetModal>
+        </View>
+      </Modal>
 
       <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
@@ -480,3 +524,4 @@ const styles = StyleSheet.create({
 });
 
 export default ReceiptsListScreen;
+
