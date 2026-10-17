@@ -28,6 +28,7 @@ import {
   DEFAULT_FILTERS,
   activeFilterCount,
   toQueryParams,
+  CURRENCIES,
 } from '../utils/filters';
 
 const CATEGORIES = [
@@ -406,6 +407,23 @@ const ReceiptsListScreen = () => {
                   >
                     <Ionicons name={c.icon as any} size={14} color={filters.category === c.id ? '#fff' : '#111'} />
                     <Text style={{ color: filters.category === c.id ? '#fff' : '#111', fontWeight: filters.category === c.id ? '600' : '400' }}>{c.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Currency</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {CURRENCIES.map((cur) => (
+                  <Pressable
+                    key={cur}
+                    onPress={() => setFilters({ ...filters, currency: filters.currency === cur ? null : cur })}
+                    style={[
+                      { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: '#f0f0f0' },
+                      filters.currency === cur && { backgroundColor: '#111' },
+                    ]}
+                  >
+                    <Text style={{ color: filters.currency === cur ? '#fff' : '#111', fontWeight: filters.currency === cur ? '600' : '400' }}>{cur}</Text>
                   </Pressable>
                 ))}
               </View>
