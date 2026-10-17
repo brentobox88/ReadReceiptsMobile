@@ -1,5 +1,5 @@
-﻿// src/screens/ReceiptsListScreen.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+// src/screens/ReceiptsListScreen.tsx
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,22 +13,31 @@ import {
   FlatList,
   ScrollView,
   Image,
+  Pressable,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import FloatingScanButton from '../components/FloatingScanButton';
+import { BottomSheetModal, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { FilterPill } from '../components/FilterPill';
+import {
+  ReceiptFilters,
+  SortOption,
+  DEFAULT_FILTERS,
+  activeFilterCount,
+  toQueryParams,
+} from '../utils/filters';
 
-// Category definitions
 const CATEGORIES = [
-  { id: 'food', label: '?? Food', color: '#FF5722' },
-  { id: 'transport', label: '?? Transport', color: '#2196F3' },
-  { id: 'shopping', label: '??? Shopping', color: '#9C27B0' },
-  { id: 'utilities', label: '?? Utilities', color: '#FFC107' },
-  { id: 'entertainment', label: '?? Entertainment', color: '#E91E63' },
-  { id: 'health', label: '?? Health', color: '#4CAF50' },
-  { id: 'travel', label: '?? Travel', color: '#00BCD4' },
-  { id: 'other', label: '?? Other', color: '#607D8B' },
+  { id: 'food', label: '🍔 Food', color: '#FF5722' },
+  { id: 'transport', label: '🚗 Transport', color: '#2196F3' },
+  { id: 'shopping', label: '🛍 Shopping', color: '#9C27B0' },
+  { id: 'utilities', label: '💡 Utilities', color: '#FFC107' },
+  { id: 'entertainment', label: '🎬 Entertainment', color: '#E91E63' },
+  { id: 'health', label: '🥗 Health', color: '#4CAF50' },
+  { id: 'travel', label: '✈️ Travel', color: '#00BCD4' },
+  { id: 'other', label: '📦 Other', color: '#607D8B' },
 ];
 
 interface Receipt {
@@ -57,17 +66,20 @@ const ReceiptsListScreen = () => {
   const [filteredReceipts, setFilteredReceipts] = useState<Receipt[]>([]);
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [filters, setFilters] = useState<ReceiptFilters>(DEFAULT_FILTERS);
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const filterCount = activeFilterCount(filters);
 
   const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
 
   const fetchReceipts = async () => {
     try {
-      const response = await fetch(API_URL + '/receipts');
+      const params = new URLSearchParams(toQueryParams(filters)).toString();
+      const response = await fetch(`${API_URL}/receipts?${params}`);
       const data = await response.json();
       if (data.receipts) {
         setReceipts(data.receipts);
-        filterReceipts(searchQuery, selectedCategory, data.receipts);
+        filterReceipts(searchQuery, data.receipts);
       }
     } catch (error) {
       console.error('Error fetching receipts:', error);
@@ -81,7 +93,7 @@ const ReceiptsListScreen = () => {
   useFocusEffect(
     useCallback(() => {
       fetchReceipts();
-    }, [])
+    }, [filters])
   );
 
   const onRefresh = () => {
@@ -89,33 +101,24 @@ const ReceiptsListScreen = () => {
     fetchReceipts();
   };
 
-  const filterReceipts = (query: string, category: string | null, receiptData?: Receipt[]) => {
+  const filterReceipts = (query: string, receiptData?: Receipt[]) => {
     const data = receiptData || receipts;
     let filtered = data;
-    
+
     if (query.trim() !== '') {
       filtered = filtered.filter(
         (receipt) =>
-          receipt.merchant_name.toLowerCase().includes(query.toLowerCase()) ||
+          (receipt.merchant_name || '').toLowerCase().includes(query.toLowerCase()) ||
           (receipt.merchant_address && receipt.merchant_address.toLowerCase().includes(query.toLowerCase()))
       );
     }
-    
-    if (category) {
-      filtered = filtered.filter((receipt) => receipt.category === category);
-    }
-    
+
     setFilteredReceipts(filtered);
   };
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
-    filterReceipts(text, selectedCategory);
-  };
-
-  const handleCategorySelect = (categoryId: string | null) => {
-    setSelectedCategory(categoryId);
-    filterReceipts(searchQuery, categoryId);
+    filterReceipts(text);
   };
 
   const handleReceiptPress = (receipt: Receipt) => {
@@ -125,12 +128,12 @@ const ReceiptsListScreen = () => {
 
   const handleViewReceipt = (receipt: Receipt) => {
     setModalVisible(false);
-    (navigation as any).navigate('Confirmation', { receiptId: receipt.id, imageUri: receipt.image_path });
+    (navigation as any).navigate('ReceiptDetail', { receiptId: receipt.id });
   };
 
   const handleDeleteReceipt = async () => {
     if (!selectedReceipt) return;
-    
+
     Alert.alert(
       'Delete Receipt',
       'Are you sure you want to delete this receipt?',
@@ -144,7 +147,7 @@ const ReceiptsListScreen = () => {
               const response = await fetch(API_URL + '/receipts/' + selectedReceipt.id, {
                 method: 'DELETE',
               });
-              
+
               if (response.ok) {
                 setModalVisible(false);
                 Alert.alert('Success', 'Receipt deleted!');
@@ -189,10 +192,6 @@ const ReceiptsListScreen = () => {
 
   const formatCurrency = (amount: number, currency: string) => {
     return currency + ' ' + amount.toFixed(2);
-  };
-
-  const getCategoryCount = (categoryId: string): number => {
-    return receipts.filter(r => r.category === categoryId).length;
   };
 
   const renderReceiptItem = ({ item }: { item: Receipt }) => (
@@ -256,8 +255,11 @@ const ReceiptsListScreen = () => {
               {filteredReceipts.length} {filteredReceipts.length === 1 ? 'receipt' : 'receipts'}
             </Text>
           </View>
-          <View style={styles.headerIcon}>
-            <Ionicons name="receipt" size={28} color="#fff" />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <FilterPill count={filterCount} onPress={() => sheetRef.current?.present()} />
+            <View style={styles.headerIcon}>
+              <Ionicons name="receipt" size={28} color="#fff" />
+            </View>
           </View>
         </View>
       </LinearGradient>
@@ -278,44 +280,6 @@ const ReceiptsListScreen = () => {
         )}
       </View>
 
-      {/* Category Filter Bar */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoryFilterContainer}
-        contentContainerStyle={styles.categoryFilterContent}
-      >
-        <TouchableOpacity
-          style={[styles.categoryChip, selectedCategory === null && styles.categoryChipActive]}
-          onPress={() => handleCategorySelect(null)}
-        >
-          <Text style={[styles.categoryChipText, selectedCategory === null && styles.categoryChipTextActive]}>
-            All ({receipts.length})
-          </Text>
-        </TouchableOpacity>
-        {CATEGORIES.map((cat) => {
-          const count = getCategoryCount(cat.id);
-          if (count === 0) return null;
-          return (
-            <TouchableOpacity
-              key={cat.id}
-              style={[
-                styles.categoryChip,
-                selectedCategory === cat.id && styles.categoryChipActive,
-              ]}
-              onPress={() => handleCategorySelect(cat.id)}
-            >
-              <Text style={[
-                styles.categoryChipText,
-                selectedCategory === cat.id && styles.categoryChipTextActive,
-              ]}>
-                {cat.label} ({count})
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
       <FlatList
         data={filteredReceipts}
         renderItem={renderReceiptItem}
@@ -333,7 +297,100 @@ const ReceiptsListScreen = () => {
         }
       />
 
-      <FloatingScanButton />
+      {/* <FloatingScanButton /> */}
+
+      <BottomSheetModal
+        ref={sheetRef}
+        snapPoints={[500]}
+        enablePanDownToClose
+        backdropComponent={(props) => (
+          <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} />
+        )}
+        handleIndicatorStyle={{ backgroundColor: '#ccc' }}
+      >
+        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+          <Text style={{ fontSize: 22, fontWeight: '700', marginBottom: 8 }}>Filters</Text>
+
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Sort by</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {([
+              { key: 'date_desc' as SortOption, label: 'Newest' },
+              { key: 'date_asc' as SortOption, label: 'Oldest' },
+              { key: 'amount_desc' as SortOption, label: 'Highest amount' },
+              { key: 'amount_asc' as SortOption, label: 'Lowest amount' },
+              { key: 'merchant_asc' as SortOption, label: 'Merchant A-Z' },
+            ]).map((s) => (
+              <Pressable
+                key={s.key}
+                onPress={() => setFilters({ ...filters, sort: s.key })}
+                style={[
+                  { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: '#f0f0f0' },
+                  filters.sort === s.key && { backgroundColor: '#111' },
+                ]}
+              >
+                <Text style={{ color: filters.sort === s.key ? '#fff' : '#111', fontWeight: filters.sort === s.key ? '600' : '400' }}>
+                  {s.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Date range</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable
+              style={{ flex: 1, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ddd' }}
+              onPress={() => {
+                const input = prompt('From (YYYY-MM-DD)');
+                if (input !== null) setFilters({ ...filters, startDate: input.trim() || null });
+              }}
+            >
+              <Text style={{ color: filters.startDate ? '#111' : '#999' }}>{filters.startDate || 'From'}</Text>
+            </Pressable>
+            <Pressable
+              style={{ flex: 1, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ddd' }}
+              onPress={() => {
+                const input = prompt('To (YYYY-MM-DD)');
+                if (input !== null) setFilters({ ...filters, endDate: input.trim() || null });
+              }}
+            >
+              <Text style={{ color: filters.endDate ? '#111' : '#999' }}>{filters.endDate || 'To'}</Text>
+            </Pressable>
+          </View>
+
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Category</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {CATEGORIES.map((c) => (
+              <Pressable
+                key={c.id}
+                onPress={() => setFilters({ ...filters, category: filters.category === c.id ? null : c.id })}
+                style={[
+                  { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: '#f0f0f0' },
+                  filters.category === c.id && { backgroundColor: '#111' },
+                ]}
+              >
+                <Text style={{ color: filters.category === c.id ? '#fff' : '#111', fontWeight: filters.category === c.id ? '600' : '400' }}>
+                  {c.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 32 }}>
+            <Pressable
+              onPress={() => setFilters(DEFAULT_FILTERS)}
+              style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#f0f0f0', alignItems: 'center' }}
+            >
+              <Text style={{ fontWeight: '600' }}>Reset</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => sheetRef.current?.dismiss()}
+              style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#111', alignItems: 'center' }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '600' }}>Apply</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </BottomSheetModal>
 
       <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
@@ -389,21 +446,9 @@ const styles = StyleSheet.create({
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', margin: 12, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e0e0e0' },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, height: 44, fontSize: 16, color: '#333' },
-  categoryFilterContainer: { maxHeight: 50, marginBottom: 4 },
-  categoryFilterContent: { paddingHorizontal: 12, paddingVertical: 4 },
-  categoryChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f0f0f0', marginRight: 8, borderWidth: 1, borderColor: 'transparent' },
-  categoryChipActive: { backgroundColor: '#4CAF50', borderColor: '#4CAF50' },
-  categoryChipText: { fontSize: 13, color: '#666' },
-  categoryChipTextActive: { color: '#fff' },
   listContainer: { padding: 12, paddingBottom: 20 },
   receiptCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   receiptHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  receiptImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 10,
-  },
   merchantContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   thumbnailImage: { width: 44, height: 44, borderRadius: 8, marginRight: 8 },
   merchantName: { fontSize: 16, fontWeight: '600', color: '#1A2332' },
@@ -435,12 +480,3 @@ const styles = StyleSheet.create({
 });
 
 export default ReceiptsListScreen;
-
-
-
-
-
-
-
-
-

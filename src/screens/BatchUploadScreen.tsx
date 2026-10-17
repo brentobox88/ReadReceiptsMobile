@@ -13,32 +13,26 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { createBatch, uploadToBatch, pollBatchUntilComplete } from '../api/batches';
+import { createBatch, uploadToBatch } from '../api/batches';
 
 const BatchUploadScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
+  const [uploading, setUploading] = useState(false);
 
   const pickImages = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission needed', 'Please grant gallery access to upload receipts.');
+      Alert.alert('Permission needed', 'Please grant gallery access.');
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: 0.8,
     });
-
     if (!result.canceled && result.assets) {
-      const uris = result.assets.map(asset => asset.uri);
-      setSelectedImages(uris);
+      setSelectedImages(result.assets.map(a => a.uri));
     }
   };
 
@@ -48,60 +42,32 @@ const BatchUploadScreen = () => {
     setSelectedImages(updated);
   };
 
-        const uploadBatch = async () => {
-    if (selectedImages.length === 0) {
-      Alert.alert('No Images', 'Please select at least one receipt image.');
-      return;
-    }
+  const uploadBatch = async () => {
+    if (selectedImages.length === 0) return;
 
-    setLoading(true);
-    setUploadProgress(0);
-
+    setUploading(true);
     try {
-      // Step 1: Create a batch
-      const batchResponse = await createBatch(`Batch ${new Date().toLocaleDateString()}`);
+      const batchResponse = await createBatch(
+        'Batch ' + new Date().toLocaleDateString()
+      );
       const batchId = batchResponse.batch_id;
-      
-      console.log('?? Batch created:', batchId);
 
-      // Step 2: Prepare files for upload
       const files = selectedImages.map((uri, index) => ({
         uri,
-        name: `receipt_${Date.now()}_${index}.jpg`,
+        name: 'receipt_' + Date.now() + '_' + index + '.jpg',
       }));
 
-      // Step 3: Upload files to batch
-      const uploadResponse = await uploadToBatch(batchId, files);
-      console.log('?? Upload response:', uploadResponse);
+      await uploadToBatch(batchId, files);
 
-      // Step 4: Poll for progress
-      const finalProgress = await pollBatchUntilComplete(
-        batchId,
-        (progress) => {
-          const percent = progress.progress_percent || 0;
-          setUploadProgress(percent);
-          console.log(`? Progress: ${percent}%`);
-        }
-      );
+      // Reset local state
+      setSelectedImages([]);
+      setUploading(false);
 
-      setLoading(false);
-
-      // Step 5: Show result
-      Alert.alert(
-        'Batch Complete',
-        `${finalProgress.processed_files} of ${finalProgress.total_files} receipts processed`,
-        [
-          {
-            text: 'View Receipts',
-            onPress: () => (navigation as any).navigate('MainTabs', { screen: 'Receipts' })
-          }
-        ]
-      );
-
+      // Navigate to the progress screen with the batch ID
+      navigation.replace('BatchProgress', { batchId });
     } catch (error: any) {
-      console.error('Batch upload error:', error);
-      setLoading(false);
-      Alert.alert('Error', error.message || 'Batch upload failed');
+      setUploading(false);
+      Alert.alert('Upload failed', error.message || 'Please try again.');
     }
   };
 
@@ -127,7 +93,9 @@ const BatchUploadScreen = () => {
           <TouchableOpacity style={styles.selectButton} onPress={pickImages}>
             <Ionicons name="images-outline" size={64} color="#4CAF50" />
             <Text style={styles.selectText}>Tap to select receipts</Text>
-            <Text style={styles.selectSubtext}>Choose multiple images from your gallery</Text>
+            <Text style={styles.selectSubtext}>
+              Choose multiple images from your gallery
+            </Text>
           </TouchableOpacity>
         ) : (
           <>
@@ -135,7 +103,10 @@ const BatchUploadScreen = () => {
               {selectedImages.map((uri, index) => (
                 <View key={index} style={styles.imageContainer}>
                   <Image source={{ uri }} style={styles.previewImage} />
-                  <TouchableOpacity style={styles.removeButton} onPress={() => removeImage(index)}>
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() => removeImage(index)}
+                  >
                     <Ionicons name="close-circle" size={24} color="#F44336" />
                   </TouchableOpacity>
                 </View>
@@ -148,18 +119,20 @@ const BatchUploadScreen = () => {
           </>
         )}
 
-        {loading && (
+        {uploading && (
           <View style={styles.progressContainer}>
             <ActivityIndicator size="large" color="#4CAF50" />
-            <Text style={styles.progressText}>Uploading... {Math.round(uploadProgress)}%</Text>
+            <Text style={styles.progressText}>Uploading receipts…</Text>
           </View>
         )}
       </ScrollView>
 
-      {selectedImages.length > 0 && !loading && (
+      {selectedImages.length > 0 && !uploading && (
         <TouchableOpacity style={styles.uploadButton} onPress={uploadBatch}>
           <Ionicons name="cloud-upload-outline" size={24} color="#fff" />
-          <Text style={styles.uploadButtonText}>Upload {selectedImages.length} Receipts</Text>
+          <Text style={styles.uploadButtonText}>
+            Upload {selectedImages.length} Receipts
+          </Text>
         </TouchableOpacity>
       )}
     </View>
@@ -167,10 +140,7 @@ const BatchUploadScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: {
     paddingTop: 48,
     paddingBottom: 20,
@@ -183,18 +153,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  backButton: {
-    padding: 4,
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
+  backButton: { padding: 4 },
+  content: { flex: 1, padding: 16 },
   selectButton: {
     flex: 1,
     backgroundColor: '#fff',
@@ -215,11 +176,7 @@ const styles = StyleSheet.create({
     color: '#333',
     marginTop: 12,
   },
-  selectSubtext: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 4,
-  },
+  selectSubtext: { fontSize: 14, color: '#999', marginTop: 4 },
   previewGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -234,10 +191,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-  },
+  previewImage: { width: '100%', height: '100%' },
   removeButton: {
     position: 'absolute',
     top: -8,
@@ -257,11 +211,7 @@ const styles = StyleSheet.create({
     borderColor: '#4CAF50',
     borderStyle: 'dashed',
   },
-  addButtonText: {
-    fontSize: 16,
-    color: '#4CAF50',
-    marginLeft: 8,
-  },
+  addButtonText: { fontSize: 16, color: '#4CAF50', marginLeft: 8 },
   uploadButton: {
     flexDirection: 'row',
     backgroundColor: '#4CAF50',
@@ -277,25 +227,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  uploadButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  progressContainer: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  progressText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 8,
-  },
+  uploadButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  progressContainer: { marginTop: 20, alignItems: 'center' },
+  progressText: { fontSize: 16, color: '#666', marginTop: 8 },
 });
 
 export default BatchUploadScreen;
-
-
-
-
-

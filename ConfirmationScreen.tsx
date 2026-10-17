@@ -1,4 +1,4 @@
-﻿// src/screens/ConfirmationScreen.tsx
+// src/screens/ConfirmationScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -59,7 +59,7 @@ const ConfirmationScreen = () => {
 
   const fetchReceiptDetails = async () => {
     try {
-      const response = await fetch(http://10.0.0.229:8001/receipts/);
+      const response = await fetch('https://readreceipts-api-sxyz.onrender.com/receipts/');
       const data = await response.json();
       setReceipt(data);
       setEditedReceipt(data);
@@ -129,7 +129,7 @@ const ConfirmationScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>📄 Review Receipt</Text>
+      <Text style={styles.title}>ðŸ“„ Review Receipt</Text>
 
       {imageUri && (
         <Image source={{ uri: imageUri }} style={styles.receiptImage} />
@@ -137,7 +137,7 @@ const ConfirmationScreen = () => {
 
       {/* Confidence Score */}
       <View style={styles.confidenceContainer}>
-        <Text style={styles.confidenceLabel}>📊 Overall Confidence</Text>
+        <Text style={styles.confidenceLabel}>ðŸ“Š Overall Confidence</Text>
         <View style={styles.confidenceBarContainer}>
           <View
             style={[
@@ -149,13 +149,13 @@ const ConfirmationScreen = () => {
         </View>
         <Text style={styles.confidenceText}>{getConfidencePercent(displayConfidence)}</Text>
         {displayConfidence < 0.6 && (
-          <Text style={styles.warningText}>⚠️ Low confidence - please verify this receipt</Text>
+          <Text style={styles.warningText}>âš ï¸ Low confidence - please verify this receipt</Text>
         )}
       </View>
 
       {/* Main Receipt Data */}
       <View style={styles.form}>
-        <Text style={styles.sectionTitle}>📋 Receipt Details</Text>
+        <Text style={styles.sectionTitle}>ðŸ“‹ Receipt Details</Text>
 
         <View style={styles.field}>
           <Text style={styles.label}>Merchant</Text>
@@ -255,7 +255,7 @@ const ConfirmationScreen = () => {
       {/* Confidence Scores for Each Field */}
       {Object.keys(confidenceScores).length > 0 && (
         <View style={styles.confidenceDetailsContainer}>
-          <Text style={styles.sectionTitle}>🎯 Field Confidence</Text>
+          <Text style={styles.sectionTitle}>ðŸŽ¯ Field Confidence</Text>
           {Object.entries(confidenceScores).map(([field, score]) => (
             <View key={field} style={styles.confidenceRow}>
               <Text style={styles.confidenceField}>{field.replace(/_/g, ' ')}</Text>
@@ -264,7 +264,7 @@ const ConfirmationScreen = () => {
                   style={[
                     styles.confidenceMiniBar,
                     { backgroundColor: getConfidenceColor(score as number) },
-                    { width: \% }
+                    { width: '100%' as any }
                   ]}
                 />
               </View>
@@ -277,7 +277,7 @@ const ConfirmationScreen = () => {
       {/* Extracted Entities */}
       {entitiesFound.length > 0 && (
         <View style={styles.entitiesContainer}>
-          <Text style={styles.sectionTitle}>🔍 Extracted Fields</Text>
+          <Text style={styles.sectionTitle}>ðŸ” Extracted Fields</Text>
           <View style={styles.tagsContainer}>
             {entitiesFound.map((entity: string) => (
               <View key={entity} style={styles.tag}>
@@ -291,7 +291,7 @@ const ConfirmationScreen = () => {
       {/* Line Items */}
       {receipt.line_items && receipt.line_items.length > 0 && (
         <View style={styles.lineItemsContainer}>
-          <Text style={styles.sectionTitle}>🛒 Line Items</Text>
+          <Text style={styles.sectionTitle}>ðŸ›’ Line Items</Text>
           {receipt.line_items.map((item: any, index: number) => (
             <View key={index} style={styles.lineItemCard}>
               <Text style={styles.lineItemName}>{item.description || 'Item'}</Text>
@@ -308,7 +308,7 @@ const ConfirmationScreen = () => {
       {/* Raw Text (expandable) */}
       {parsed.raw_text && (
         <View style={styles.rawTextContainer}>
-          <Text style={styles.sectionTitle}>📝 Raw OCR Text</Text>
+          <Text style={styles.sectionTitle}>ðŸ“ Raw OCR Text</Text>
           <Text style={styles.rawText} numberOfLines={3}>
             {parsed.raw_text}
           </Text>
@@ -322,7 +322,7 @@ const ConfirmationScreen = () => {
           onPress={() => setIsEditing(!isEditing)}
         >
           <Text style={styles.buttonText}>
-            {isEditing ? 'Cancel Edit' : '✏️ Edit'}
+            {isEditing ? 'Cancel Edit' : 'âœï¸ Edit'}
           </Text>
         </TouchableOpacity>
 
@@ -331,7 +331,7 @@ const ConfirmationScreen = () => {
             style={[styles.button, styles.saveButton]}
             onPress={handleSave}
           >
-            <Text style={styles.buttonText}>💾 Save Changes</Text>
+            <Text style={styles.buttonText}>ðŸ’¾ Save Changes</Text>
           </TouchableOpacity>
         )}
 
@@ -339,7 +339,7 @@ const ConfirmationScreen = () => {
           style={[styles.button, styles.confirmButton]}
           onPress={handleConfirm}
         >
-          <Text style={styles.buttonText}>✅ Confirm & Save</Text>
+          <Text style={styles.buttonText}>âœ… Confirm & Save</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

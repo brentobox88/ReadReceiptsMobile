@@ -29,8 +29,8 @@ export const logWarning = (message: string, data?: any) => {
 };
 
 export const logApiError = (endpoint: string, error: any, status?: number) => {
-  console.error(❌ API Error on :, error.message || error);
+  console.error('❌ API Error on', endpoint, error.message || error);
   if (status) {
-    console.error(📋 Status: );
+    console.error('📋 Status:', status);
   }
 };

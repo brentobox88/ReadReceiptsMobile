@@ -1,5 +1,8 @@
-﻿// App.tsx - ReadReceipts with Authentication
+// App.tsx - ReadReceipts with Authentication
+import 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -17,6 +20,8 @@ import {
   ExportScreen,
   ReportsScreen,
   BatchUploadScreen,
+  BatchProgressScreen,
+  ReceiptDetailScreen,
 } from './src/screens';
 
 const Tab = createBottomTabNavigator();
@@ -70,41 +75,13 @@ function MainTabs() {
         },
       })}
     >
-      <Tab.Screen
-        name="Dashboard"
-        component={DashboardScreen}
-        options={{ title: 'Summary', tabBarLabel: 'Summary' }}
-      />
-      <Tab.Screen
-        name="Scan"
-        component={CameraScreen}
-        options={{ title: 'Scan Receipt', tabBarLabel: 'Scan' }}
-      />
-      <Tab.Screen
-        name="Receipts"
-        component={ReceiptsListScreen}
-        options={{ title: 'My Receipts', tabBarLabel: 'Receipts' }}
-      />
-      <Tab.Screen
-        name="Export"
-        component={ExportScreen}
-        options={{ title: 'Export', tabBarLabel: 'Export' }}
-      />
-      <Tab.Screen
-        name="Reports"
-        component={ReportsScreen}
-        options={{ title: 'Reports', tabBarLabel: 'Reports' }}
-      />
-      <Tab.Screen
-        name="Subscription"
-        component={SubscriptionScreen}
-        options={{ title: 'Subscription', tabBarLabel: 'Upgrade' }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{ title: 'Profile', tabBarLabel: 'Profile' }}
-      />
+      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'Summary', tabBarLabel: 'Summary' }} />
+      <Tab.Screen name="Scan" component={CameraScreen} options={{ title: 'Scan Receipt', tabBarLabel: 'Scan' }} />
+      <Tab.Screen name="Receipts" component={ReceiptsListScreen} options={{ title: 'My Receipts', tabBarLabel: 'Receipts' }} />
+      <Tab.Screen name="Export" component={ExportScreen} options={{ title: 'Export', tabBarLabel: 'Export' }} />
+      <Tab.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports', tabBarLabel: 'Reports' }} />
+      <Tab.Screen name="Subscription" component={SubscriptionScreen} options={{ title: 'Subscription', tabBarLabel: 'Upgrade' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile', tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
 }
@@ -134,41 +111,26 @@ export default function App() {
   }
 
   return (
-    <SubscriptionProvider>
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: '#4CAF50',
-            },
-            headerTintColor: '#fff',
-            headerTitleStyle: {
-              fontWeight: 'bold',
-            },
-          }}
-        >
-          <Stack.Screen
-            name="MainTabs"
-            component={MainTabs}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Confirmation"
-            component={ConfirmationScreen}
-            options={{
-              title: 'Review Receipt',
-              presentation: 'modal',
-            }}
-          />
-          <Stack.Screen
-            name="BatchUpload"
-            component={BatchUploadScreen}
-            options={{ title: 'Batch Upload', presentation: 'modal' }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SubscriptionProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <BottomSheetModalProvider>
+        <SubscriptionProvider>
+          <NavigationContainer>
+            <Stack.Navigator
+              screenOptions={{
+                headerStyle: { backgroundColor: '#4CAF50' },
+                headerTintColor: '#fff',
+                headerTitleStyle: { fontWeight: 'bold' },
+              }}
+            >
+              <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+              <Stack.Screen name="Confirmation" component={ConfirmationScreen} options={{ title: 'Review Receipt', presentation: 'modal' }} />
+              <Stack.Screen name="BatchUpload" component={BatchUploadScreen} options={{ title: 'Batch Upload', presentation: 'modal' }} />
+              <Stack.Screen name="BatchProgress" component={BatchProgressScreen} options={{ title: 'Batch Progress', presentation: 'modal' }} />
+              <Stack.Screen name="ReceiptDetail" component={ReceiptDetailScreen} options={{ title: 'Receipt Details' }} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </SubscriptionProvider>
+      </BottomSheetModalProvider>
+    </GestureHandlerRootView>
   );
 }
-
-

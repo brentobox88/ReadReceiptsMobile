@@ -20,6 +20,28 @@ export interface BatchProgress {
   progress_percent: number;
   total_amount: number;
   avg_confidence: number;
+  progress?: {
+    total: number;
+    completed: number;
+    failed: number;
+    processing: number;
+    progress_percent: number;
+    created_at: string;
+    started_at: string | null;
+    completed_at: string | null;
+  };
+}
+
+export interface BatchReceipt {
+  id: string;
+  filename: string;
+  status: string;
+  merchant: string | null;
+  total: number;
+  category: string | null;
+  confidence: number;
+  error: string | null;
+  processed_at: string | null;
 }
 
 // Create a new batch
@@ -59,28 +81,12 @@ export const getBatchProgress = async (batchId: string): Promise<BatchProgress> 
 };
 
 // Get batch receipts
-export const getBatchReceipts = async (batchId: string) => {
+export const getBatchReceipts = async (batchId: string): Promise<{ batch_id: string; receipts: BatchReceipt[] }> => {
   const response = await axios.get(`${API_URL}/batches/${batchId}/receipts`);
   return response.data;
 };
 
-// Poll batch until complete
-export const pollBatchUntilComplete = async (
-  batchId: string,
-  onProgress: (progress: BatchProgress) => void,
-  maxAttempts: number = 30
-): Promise<BatchProgress> => {
-  for (let i = 0; i < maxAttempts; i++) {
-    const progress = await getBatchProgress(batchId);
-    onProgress(progress);
-
-    if (progress.status === 'completed' || progress.status === 'failed' || progress.status === 'partial') {
-      return progress;
-    }
-
-    // Wait 2 seconds before next poll
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  }
-
-  throw new Error('Batch processing timed out');
+// Check whether a batch is in a terminal state
+export const isBatchComplete = (status: string): boolean => {
+  return ['completed', 'failed', 'partial'].includes(status);
 };
