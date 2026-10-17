@@ -7,7 +7,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { SubscriptionProvider } from './src/context/SubscriptionContext';
+import { auth } from './src/config/firebase';
 import {
   CameraScreen,
   ReceiptsListScreen,
@@ -89,6 +91,7 @@ function MainTabs() {
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -97,8 +100,24 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
+      if (user) {
+        console.log('Auth state: signed in', user.email);
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+      } else {
+        console.log('Auth state: signed out');
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   const handleAuthSuccess = (userData: any) => {
-    console.log('Auth Success:', userData);
+    console.log('Auth Success:', userData?.email);
+    setCurrentUser(userData);
     setIsAuthenticated(true);
   };
 
