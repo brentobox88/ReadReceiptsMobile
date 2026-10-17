@@ -1,4 +1,4 @@
-﻿// src/screens/ReceiptsListScreen.tsx
+// src/screens/ReceiptsListScreen.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
