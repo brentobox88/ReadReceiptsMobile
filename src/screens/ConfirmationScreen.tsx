@@ -1,366 +1,433 @@
-﻿// src/screens/ConfirmationScreen.tsx
-import React, { useState, useEffect } from 'react';
+// src/screens/ConfirmationScreen.tsx
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
-  Alert,
+  TouchableOpacity,
   Image,
   TextInput,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useRoute, useNavigation } from '@react-navigation/native';
 
-const DOCUMENT_TYPES = [
-  { id: 'expense', label: '?? Expense' },
-  { id: 'invoice', label: '?? Income' },
-  { id: 'tax', label: '?? Tax' },
-];
+const API_BASE = 'https://readreceipts-api-sxyz.onrender.com';
 
-const CATEGORIES = [
-  { id: 'food', label: '?? Food' },
-  { id: 'transport', label: '?? Transport' },
-  { id: 'shopping', label: '??? Shopping' },
-  { id: 'utilities', label: '?? Utilities' },
-  { id: 'entertainment', label: '?? Entertainment' },
-  { id: 'health', label: '?? Health' },
-  { id: 'travel', label: '?? Travel' },
-  { id: 'other', label: '?? Other' },
-];
+interface ReceiptData {
+  id: string;
+  merchant_name: string | null;
+  merchant_address: string | null;
+  transaction_date: string | null;
+  total_amount: number | null;
+  tax_amount: number | null;
+  subtotal: number | null;
+  currency: string | null;
+  confidence_score: number | null;
+  line_items: any[];
+  parsed_data: Record<string, any> | null;
+  status: string;
+  created_at: string;
+}
 
 const ConfirmationScreen = () => {
-  const navigation = useNavigation<any>();
   const route = useRoute();
-  const { receiptId, imageUri } = route.params as { receiptId?: string; imageUri?: string };
+  const navigation = useNavigation();
+  const { receiptId, imageUri } = route.params as { receiptId: string; imageUri?: string };
+
+  const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [receipt, setReceipt] = useState<any>(null);
-  const [merchant, setMerchant] = useState('');
-  const [date, setDate] = useState('');
-  const [total, setTotal] = useState('');
-  const [tax, setTax] = useState('');
-  const [documentType, setDocumentType] = useState('expense');
-  const [category, setCategory] = useState('');
+  const [editedReceipt, setEditedReceipt] = useState<Partial<ReceiptData>>({});
+  const [saving, setSaving] = useState(false);
 
-  const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
-
-  useEffect(() => {
-    if (receiptId) {
-      fetchReceiptDetails();
-    } else {
+  const fetchReceiptDetails = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/receipts/${receiptId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setReceipt(data);
+      setEditedReceipt(data);
+    } catch (error) {
+      console.error('Error fetching receipt:', error);
+      Alert.alert('Error', 'Failed to load receipt details');
+      setReceipt(null);
+    } finally {
       setLoading(false);
     }
   }, [receiptId]);
 
-  const fetchReceiptDetails = async () => {
-    try {
-      const response = await fetch(API_URL + '/receipts/' + receiptId);
-      const data = await response.json();
-      setReceipt(data);
-      setMerchant(data.merchant_name || '');
-      setDate(data.transaction_date || '');
-      setTotal(data.total_amount?.toString() || '');
-      setTax(data.tax_amount?.toString() || '');
-      setDocumentType(data.document_type || 'expense');
-      setCategory(data.category || '');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to load receipt details');
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    fetchReceiptDetails();
+  }, [fetchReceiptDetails]);
+
+  const beginEdit = () => {
+    setEditedReceipt(receipt ?? {});
+    setIsEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setEditedReceipt(receipt ?? {});
+    setIsEditing(false);
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const updatedData = {
-        merchant_name: merchant,
-        transaction_date: date,
-        total_amount: parseFloat(total) || 0,
-        tax_amount: parseFloat(tax) || 0,
-        document_type: documentType,
-        category: category,
-      };
-
-      const response = await fetch(API_URL + '/receipts/' + receiptId, {
+      const res = await fetch(`${API_BASE}/receipts/${receiptId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedData),
+        body: JSON.stringify({
+          merchant_name: editedReceipt.merchant_name,
+          merchant_address: editedReceipt.merchant_address,
+          transaction_date: editedReceipt.transaction_date,
+          total_amount: editedReceipt.total_amount,
+          tax_amount: editedReceipt.tax_amount,
+          subtotal: editedReceipt.subtotal,
+          currency: editedReceipt.currency,
+        }),
       });
-
-      if (response.ok) {
-        Alert.alert('Success', 'Receipt updated!');
-        setIsEditing(false);
-        fetchReceiptDetails();
-      } else {
-        Alert.alert('Error', 'Failed to update receipt');
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      Alert.alert('Success', 'Receipt updated');
+      setIsEditing(false);
+      await fetchReceiptDetails();
     } catch (error) {
-      Alert.alert('Error', 'Network error');
+      console.error('Save error:', error);
+      Alert.alert('Error', 'Failed to save changes');
     } finally {
       setSaving(false);
     }
   };
 
-  const getConfidenceColor = (score: number) => {
-    if (score >= 0.8) return '#4CAF50';
-    if (score >= 0.6) return '#FF9800';
+  const handleConfirm = () => {
+    (navigation as any).navigate('ReceiptsList');
+  };
+
+  const getConfidenceColor = (confidence: number) => {
+    if (confidence >= 0.8) return '#4CAF50';
+    if (confidence >= 0.6) return '#FF9800';
     return '#F44336';
   };
 
-  const getConfidenceText = (score: number) => {
-    if (score >= 0.8) return 'High';
-    if (score >= 0.6) return 'Medium';
-    return 'Low';
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
-    } catch {
-      return dateString;
-    }
+  const getConfidencePercent = (confidence: number) => {
+    return Math.round(confidence * 100) + '%';
   };
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={styles.loadingText}>Loading receipt...</Text>
+        <Text style={styles.loadingText}>Loading receipt details...</Text>
       </View>
     );
   }
 
+  if (!receipt) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.errorText}>Receipt not found</Text>
+      </View>
+    );
+  }
+
+  // parsed_data may be a JSON string or an object; normalize defensively
+  let parsed: Record<string, any> = {};
+  if (receipt.parsed_data) {
+    parsed = typeof receipt.parsed_data === 'string'
+      ? (() => { try { return JSON.parse(receipt.parsed_data as unknown as string); } catch { return {}; } })()
+      : receipt.parsed_data;
+  }
+
+  const src = isEditing ? editedReceipt : receipt;
+
+  const displayName = (src as any).merchant_name || parsed.supplier_name || '';
+  const displayAddress = (src as any).merchant_address || parsed.supplier_address || '';
+  const displayDate = (src as any).transaction_date || parsed.receipt_date || '';
+  const displayTime = parsed.purchase_time || '';
+  const displayTotal = (src as any).total_amount ?? parsed.total_amount ?? 0;
+  const displayTax = (src as any).tax_amount ?? parsed.total_tax_amount ?? 0;
+  const displaySubtotal = (src as any).subtotal ?? parsed.net_amount ?? 0;
+  const displayCurrency = (src as any).currency || parsed.currency || 'USD';
+  const displayTip = parsed.tip_amount || 0;
+  const displayConfidence = receipt.confidence_score ?? 0;
+  const confidenceScores = parsed.confidence_scores || {};
+  const entitiesFound = parsed.entities_found || [];
+
+  const isLowConfidence = displayConfidence > 0 && displayConfidence < 0.8;
+
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#4CAF50', '#2196F3']}
-        style={styles.header}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Receipt Details</Text>
-          <TouchableOpacity onPress={() => setIsEditing(!isEditing)} style={styles.editButton}>
-            <Ionicons name={isEditing ? 'close' : 'pencil'} size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>Review Receipt</Text>
 
-      <ScrollView style={styles.content}>
-        {imageUri && (
-          <Image source={{ uri: imageUri && imageUri.startsWith("uploads/") ? "https://readreceipts-api-sxyz.onrender.com/" + imageUri : imageUri }} style={styles.receiptImage} resizeMode="cover" />
+      {imageUri && (
+        <Image source={{ uri: imageUri }} style={styles.receiptImage} />
+      )}
+
+      {/* Confidence Score */}
+      <View style={styles.confidenceContainer}>
+        <Text style={styles.confidenceLabel}>Overall Confidence</Text>
+        <View style={styles.confidenceBarContainer}>
+          <View
+            style={[
+              styles.confidenceBar,
+              { backgroundColor: getConfidenceColor(displayConfidence) },
+              { width: getConfidencePercent(displayConfidence) as unknown as number },
+            ]}
+          />
+        </View>
+        <Text style={styles.confidenceText}>{getConfidencePercent(displayConfidence)}</Text>
+        {isLowConfidence && (
+          <Text style={styles.warningText}>
+            Low confidence - please review the fields below
+          </Text>
+        )}
+      </View>
+
+      {/* Main Receipt Data */}
+      <View style={styles.form}>
+        <Text style={styles.sectionTitle}>Receipt Details</Text>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Merchant</Text>
+          <TextInput
+            style={styles.input}
+            value={displayName}
+            onChangeText={(text) => setEditedReceipt({ ...editedReceipt, merchant_name: text })}
+            editable={isEditing}
+          />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Address</Text>
+          <TextInput
+            style={styles.input}
+            value={displayAddress}
+            onChangeText={(text) => setEditedReceipt({ ...editedReceipt, merchant_address: text })}
+            editable={isEditing}
+          />
+        </View>
+
+        <View style={styles.row}>
+          <View style={[styles.field, styles.halfField]}>
+            <Text style={styles.label}>Date</Text>
+            <TextInput
+              style={styles.input}
+              value={displayDate}
+              onChangeText={(text) => setEditedReceipt({ ...editedReceipt, transaction_date: text })}
+              editable={isEditing}
+              placeholder="YYYY-MM-DD"
+            />
+          </View>
+          <View style={[styles.field, styles.halfField]}>
+            <Text style={styles.label}>Time</Text>
+            <TextInput
+              style={styles.input}
+              value={displayTime}
+              editable={false}
+            />
+          </View>
+        </View>
+
+        <View style={styles.row}>
+          <View style={[styles.field, styles.halfField]}>
+            <Text style={styles.label}>Subtotal</Text>
+            <TextInput
+              style={styles.input}
+              value={String(displaySubtotal)}
+              onChangeText={(text) => setEditedReceipt({
+                ...editedReceipt,
+                subtotal: text === '' ? undefined : parseFloat(text),
+              })}
+              editable={isEditing}
+              keyboardType="decimal-pad"
+            />
+          </View>
+          <View style={[styles.field, styles.halfField]}>
+            <Text style={styles.label}>Tax</Text>
+            <TextInput
+              style={styles.input}
+              value={String(displayTax)}
+              onChangeText={(text) => setEditedReceipt({
+                ...editedReceipt,
+                tax_amount: text === '' ? undefined : parseFloat(text),
+              })}
+              editable={isEditing}
+              keyboardType="decimal-pad"
+            />
+          </View>
+        </View>
+
+        {displayTip > 0 && (
+          <View style={styles.field}>
+            <Text style={styles.label}>Tip</Text>
+            <TextInput
+              style={styles.input}
+              value={String(displayTip)}
+              editable={false}
+            />
+          </View>
         )}
 
-        {receipt ? (
-          <View style={styles.card}>
-            {isEditing ? (
-              <>
-                <Text style={styles.label}>Merchant</Text>
-                <TextInput
-                  style={styles.input}
-                  value={merchant}
-                  onChangeText={setMerchant}
-                  placeholder="Merchant name"
+        <View style={styles.field}>
+          <Text style={styles.label}>Total Amount</Text>
+          <TextInput
+            style={[styles.input, styles.totalInput]}
+            value={String(displayTotal)}
+            onChangeText={(text) => setEditedReceipt({
+              ...editedReceipt,
+              total_amount: text === '' ? undefined : parseFloat(text),
+            })}
+            editable={isEditing}
+            keyboardType="decimal-pad"
+          />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Currency</Text>
+          <TextInput
+            style={styles.input}
+            value={displayCurrency}
+            onChangeText={(text) => setEditedReceipt({ ...editedReceipt, currency: text })}
+            editable={isEditing}
+          />
+        </View>
+      </View>
+
+      {/* Field Confidence */}
+      {Object.keys(confidenceScores).length > 0 && (
+        <View style={styles.confidenceDetailsContainer}>
+          <Text style={styles.sectionTitle}>Field Confidence</Text>
+          {Object.entries(confidenceScores).map(([field, score]) => (
+            <View key={field} style={styles.confidenceRow}>
+              <Text style={styles.confidenceField}>{field.replace(/_/g, ' ')}</Text>
+              <View style={styles.confidenceMiniBarContainer}>
+                <View
+                  style={[
+                    styles.confidenceMiniBar,
+                    { backgroundColor: getConfidenceColor(score as number) },
+                    { width: `${Math.round((score as number) * 100)}%` as any },
+                  ]}
                 />
-                <Text style={styles.label}>Date</Text>
-                <TextInput
-                  style={styles.input}
-                  value={date}
-                  onChangeText={setDate}
-                  placeholder="YYYY-MM-DD"
-                />
-                <Text style={styles.label}>Total Amount</Text>
-                <TextInput
-                  style={styles.input}
-                  value={total}
-                  onChangeText={setTotal}
-                  placeholder="0.00"
-                  keyboardType="numeric"
-                />
-                <Text style={styles.label}>Tax Amount</Text>
-                <TextInput
-                  style={styles.input}
-                  value={tax}
-                  onChangeText={setTax}
-                  placeholder="0.00"
-                  keyboardType="numeric"
-                />
-                <Text style={styles.label}>Document Type</Text>
-                <View style={styles.chipContainer}>
-                  {DOCUMENT_TYPES.map((type) => (
-                    <TouchableOpacity
-                      key={type.id}
-                      style={[styles.chip, documentType === type.id && styles.chipActive]}
-                      onPress={() => setDocumentType(type.id)}
-                    >
-                      <Text style={[styles.chipText, documentType === type.id && styles.chipTextActive]}>
-                        {type.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <Text style={styles.label}>Category</Text>
-                <View style={styles.chipContainer}>
-                  {CATEGORIES.map((cat) => (
-                    <TouchableOpacity
-                      key={cat.id}
-                      style={[styles.chip, category === cat.id && styles.chipActive]}
-                      onPress={() => setCategory(cat.id)}
-                    >
-                      <Text style={[styles.chipText, category === cat.id && styles.chipTextActive]}>
-                        {cat.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <TouchableOpacity
-                  style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-                  onPress={handleSave}
-                  disabled={saving}
-                >
-                  <Text style={styles.saveButtonText}>
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Merchant</Text>
-                  <Text style={styles.value}>{receipt.merchant_name || 'Unknown'}</Text>
-                </View>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Address</Text>
-                  <Text style={styles.value}>{receipt.merchant_address || 'N/A'}</Text>
-                </View>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Date</Text>
-                  <Text style={styles.value}>{formatDate(receipt.transaction_date)}</Text>
-                </View>
-                <View style={[styles.field, styles.totalField]}>
-                  <Text style={styles.totalLabel}>Total Amount</Text>
-                  <Text style={styles.totalValue}>
-                    {(receipt.currency || '$') + (receipt.total_amount || 0).toFixed(2)}
-                  </Text>
-                </View>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Tax</Text>
-                  <Text style={styles.value}>
-                    {(receipt.currency || '$') + (receipt.tax_amount || 0).toFixed(2)}
-                  </Text>
-                </View>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Document Type</Text>
-                  <Text style={styles.value}>
-                    {DOCUMENT_TYPES.find(t => t.id === receipt.document_type)?.label || 'Expense'}
-                  </Text>
-                </View>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Category</Text>
-                  <Text style={styles.value}>
-                    {CATEGORIES.find(c => c.id === receipt.category)?.label || 'Uncategorized'}
-                  </Text>
-                </View>
-                {receipt.confidence_score && (
-                  <View style={styles.confidenceContainer}>
-                    <Text style={styles.confidenceLabel}>Confidence Score</Text>
-                    <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(receipt.confidence_score) + '20' }]}>
-                      <Text style={[styles.confidenceText, { color: getConfidenceColor(receipt.confidence_score) }]}>
-                        {getConfidenceText(receipt.confidence_score)}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-              </>
-            )}
-          </View>
-        ) : (
-          <View style={styles.card}>
-            <View style={styles.successContainer}>
-              <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
-              <Text style={styles.successTitle}>Upload Successful!</Text>
-              <Text style={styles.successSubtext}>Receipt ID: {receiptId}</Text>
+              </View>
+              <Text style={styles.confidenceValue}>{Math.round((score as number) * 100)}%</Text>
             </View>
+          ))}
+        </View>
+      )}
+
+      {/* Extracted Entities */}
+      {entitiesFound.length > 0 && (
+        <View style={styles.entitiesContainer}>
+          <Text style={styles.sectionTitle}>Extracted Fields</Text>
+          <View style={styles.tagsContainer}>
+            {entitiesFound.map((entity: string) => (
+              <View key={entity} style={styles.tag}>
+                <Text style={styles.tagText}>{entity.replace(/_/g, ' ')}</Text>
+              </View>
+            ))}
           </View>
+        </View>
+      )}
+
+      {/* Line Items */}
+      {receipt.line_items && receipt.line_items.length > 0 && (
+        <View style={styles.lineItemsContainer}>
+          <Text style={styles.sectionTitle}>Line Items</Text>
+          {receipt.line_items.map((item: any, index: number) => (
+            <View key={index} style={styles.lineItemCard}>
+              <Text style={styles.lineItemName}>{item.description || 'Item'}</Text>
+              <View style={styles.lineItemRow}>
+                <Text style={styles.lineItemDetail}>Qty: {item.quantity || 1}</Text>
+                <Text style={styles.lineItemTotal}>
+                  {item.amount != null ? `${displayCurrency} ${item.amount}` : ''}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Raw Text */}
+      {parsed.raw_text && (
+        <View style={styles.rawTextContainer}>
+          <Text style={styles.sectionTitle}>Raw OCR Text</Text>
+          <Text style={styles.rawText} numberOfLines={3}>
+            {parsed.raw_text}
+          </Text>
+        </View>
+      )}
+
+      {/* Buttons */}
+      <View style={styles.buttonContainer}>
+        {!isEditing ? (
+          <TouchableOpacity style={[styles.button, styles.editButton]} onPress={beginEdit}>
+            <Text style={styles.buttonText}>Edit</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSave} disabled={saving}>
+              <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.button, styles.editButton]} onPress={cancelEdit}>
+              <Text style={styles.buttonText}>Cancel</Text>
+            </TouchableOpacity>
+          </>
         )}
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.button, styles.primaryButton]}
-            onPress={() => navigation.navigate('MainTabs', { screen: 'Receipts' })}
-          >
-            <Text style={styles.buttonText}>View All Receipts</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.button, styles.secondaryButton]}
-            onPress={() => navigation.navigate('MainTabs', { screen: 'Scan' })}
-          >
-            <Text style={styles.buttonText}>Scan Another</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </View>
+        <TouchableOpacity style={[styles.button, styles.confirmButton]} onPress={handleConfirm}>
+          <Text style={styles.buttonText}>Confirm & Save</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' },
-  loadingText: { marginTop: 8, fontSize: 14, color: '#666' },
-  header: { paddingTop: 48, paddingBottom: 20, paddingHorizontal: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
-  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
-  backButton: { padding: 4 },
-  editButton: { padding: 4 },
-  content: { flex: 1, padding: 16 },
-  receiptImage: { width: '100%', height: 200, borderRadius: 12, marginBottom: 16 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 16 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
+  loadingText: { marginTop: 12, fontSize: 16, color: '#666' },
+  errorText: { fontSize: 18, color: '#F44336', textAlign: 'center' },
+  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 16, color: '#333' },
+  receiptImage: { width: '100%', height: 200, borderRadius: 8, marginBottom: 16, backgroundColor: '#e0e0e0' },
+  confidenceContainer: { backgroundColor: '#fff', padding: 16, borderRadius: 8, marginBottom: 16 },
+  confidenceLabel: { fontSize: 14, color: '#666', marginBottom: 8 },
+  confidenceBarContainer: { height: 8, backgroundColor: '#e0e0e0', borderRadius: 4, overflow: 'hidden' },
+  confidenceBar: { height: '100%', borderRadius: 4 },
+  confidenceText: { fontSize: 14, fontWeight: '600', marginTop: 4 },
+  warningText: { color: '#F44336', marginTop: 8, fontWeight: '500' },
+  form: { backgroundColor: '#fff', padding: 16, borderRadius: 8, marginBottom: 16 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 12 },
   field: { marginBottom: 12 },
-  label: { fontSize: 12, fontWeight: '600', color: '#999', textTransform: 'uppercase', marginBottom: 2 },
-  value: { fontSize: 16, color: '#333' },
-  totalField: { borderTopWidth: 1, borderTopColor: '#e0e0e0', paddingTop: 12, marginTop: 4, marginBottom: 0 },
-  totalLabel: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-  totalValue: { fontSize: 24, fontWeight: 'bold', color: '#4CAF50' },
-  confidenceContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-  confidenceLabel: { fontSize: 12, color: '#999' },
-  confidenceBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  confidenceText: { fontSize: 12, fontWeight: '600' },
-  input: { borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 8, padding: 10, fontSize: 16, marginBottom: 8, backgroundColor: '#f9f9f9' },
-  chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: 'transparent', marginRight: 6, marginBottom: 6 },
-  chipActive: { backgroundColor: '#4CAF50', borderColor: '#4CAF50' },
-  chipText: { fontSize: 14, color: '#333' },
-  chipTextActive: { color: '#fff' },
-  saveButton: { backgroundColor: '#4CAF50', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 12 },
-  saveButtonDisabled: { opacity: 0.5 },
-  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  successContainer: { alignItems: 'center', paddingVertical: 20 },
-  successTitle: { fontSize: 20, fontWeight: 'bold', color: '#4CAF50', marginTop: 8 },
-  successSubtext: { fontSize: 14, color: '#666', marginTop: 4 },
-  buttonContainer: { gap: 10, marginVertical: 16 },
-  button: { padding: 16, borderRadius: 12, alignItems: 'center' },
-  primaryButton: { backgroundColor: '#4CAF50' },
-  secondaryButton: { backgroundColor: '#2196F3' },
+  label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 4 },
+  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: '#fafafa' },
+  totalInput: { borderColor: '#4CAF50', borderWidth: 2, fontWeight: 'bold' },
+  row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  halfField: { flex: 1 },
+  confidenceDetailsContainer: { backgroundColor: '#fff', padding: 16, borderRadius: 8, marginBottom: 16 },
+  confidenceRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  confidenceField: { flex: 1, fontSize: 14, color: '#333', textTransform: 'capitalize' },
+  confidenceMiniBarContainer: { flex: 2, height: 6, backgroundColor: '#e0e0e0', borderRadius: 3, overflow: 'hidden', marginHorizontal: 8 },
+  confidenceMiniBar: { height: '100%', borderRadius: 3 },
+  confidenceValue: { fontSize: 14, fontWeight: '600', color: '#333', width: 45, textAlign: 'right' },
+  entitiesContainer: { backgroundColor: '#fff', padding: 16, borderRadius: 8, marginBottom: 16 },
+  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag: { backgroundColor: '#E8F5E9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#4CAF50' },
+  tagText: { fontSize: 12, color: '#2E7D32', textTransform: 'capitalize' },
+  lineItemsContainer: { backgroundColor: '#fff', padding: 16, borderRadius: 8, marginBottom: 16 },
+  lineItemCard: { backgroundColor: '#f8f8f8', padding: 12, borderRadius: 8, marginBottom: 8 },
+  lineItemName: { fontSize: 16, fontWeight: '600', color: '#333' },
+  lineItemRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  lineItemDetail: { fontSize: 14, color: '#666' },
+  lineItemTotal: { fontSize: 14, fontWeight: 'bold', color: '#333' },
+  rawTextContainer: { backgroundColor: '#fff', padding: 16, borderRadius: 8, marginBottom: 16 },
+  rawText: { fontSize: 12, color: '#666', fontFamily: 'monospace', backgroundColor: '#f8f8f8', padding: 8, borderRadius: 4 },
+  buttonContainer: { gap: 12, marginBottom: 40 },
+  button: { padding: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  editButton: { backgroundColor: '#FF9800' },
+  saveButton: { backgroundColor: '#2196F3' },
+  confirmButton: { backgroundColor: '#4CAF50' },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
 
 export default ConfirmationScreen;
-
-
-
-

@@ -1,5 +1,5 @@
 // src/screens/ReceiptDetailScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  TextInput,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +39,17 @@ interface Receipt {
   error_message: string | null;
 }
 
+interface EditableFields {
+  merchant_name: string;
+  merchant_address: string;
+  transaction_date: string;
+  subtotal: string;
+  tax_amount: string;
+  total_amount: string;
+  currency: string;
+  category: string;
+}
+
 const ReceiptDetailScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -47,21 +59,31 @@ const ReceiptDetailScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<EditableFields>({
+    merchant_name: '',
+    merchant_address: '',
+    transaction_date: '',
+    subtotal: '',
+    tax_amount: '',
+    total_amount: '',
+    currency: '',
+    category: '',
+  });
 
-  const fetchReceipt = async () => {
+  const fetchReceipt = useCallback(async () => {
     if (!receiptId) {
       setError('No receipt ID provided');
       setLoading(false);
       return;
     }
-
     try {
       const response = await fetch(`${API_URL}/receipts/${receiptId}`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      setReceipt(data.receipt || data);
+      const r: Receipt = data.receipt || data;
+      setReceipt(r);
       setError(null);
     } catch (e: any) {
       console.error('Failed to fetch receipt:', e);
@@ -69,11 +91,62 @@ const ReceiptDetailScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [receiptId]);
 
   useEffect(() => {
     fetchReceipt();
-  }, [receiptId]);
+  }, [fetchReceipt]);
+
+  const beginEdit = () => {
+    if (!receipt) return;
+    setDraft({
+      merchant_name: receipt.merchant_name || '',
+      merchant_address: receipt.merchant_address || '',
+      transaction_date: receipt.transaction_date || '',
+      subtotal: receipt.subtotal != null ? String(receipt.subtotal) : '',
+      tax_amount: receipt.tax_amount != null ? String(receipt.tax_amount) : '',
+      total_amount: receipt.total_amount != null ? String(receipt.total_amount) : '',
+      currency: receipt.currency || 'USD',
+      category: receipt.category || '',
+    });
+    setIsEditing(true);
+  };
+
+  const cancelEdit = () => setIsEditing(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const parseNum = (s: string) => (s.trim() === '' ? null : parseFloat(s));
+      const payload = {
+        merchant_name: draft.merchant_name || null,
+        merchant_address: draft.merchant_address || null,
+        transaction_date: draft.transaction_date || null,
+        subtotal: parseNum(draft.subtotal),
+        tax_amount: parseNum(draft.tax_amount),
+        total_amount: parseNum(draft.total_amount),
+        currency: draft.currency || 'USD',
+        category: draft.category || null,
+      };
+      const res = await fetch(`${API_URL}/receipts/${receiptId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errText.slice(0, 100)}`);
+      }
+      setIsEditing(false);
+      await fetchReceipt();
+      Alert.alert('Saved', 'Receipt updated successfully');
+    } catch (e: any) {
+      console.error('Save failed:', e);
+      Alert.alert('Error', e.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleDelete = () => {
     Alert.alert(
@@ -86,9 +159,7 @@ const ReceiptDetailScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await fetch(`${API_URL}/receipts/${receiptId}`, {
-                method: 'DELETE',
-              });
+              const response = await fetch(`${API_URL}/receipts/${receiptId}`, { method: 'DELETE' });
               if (response.ok) {
                 Alert.alert('Deleted', 'Receipt deleted successfully');
                 navigation.goBack();
@@ -115,17 +186,10 @@ const ReceiptDetailScreen = () => {
           onPress: async () => {
             setRetrying(true);
             try {
-              const response = await fetch(
-                `${API_URL}/receipts/${receiptId}/retry`,
-                { method: 'POST' }
-              );
+              const response = await fetch(`${API_URL}/receipts/${receiptId}/retry`, { method: 'POST' });
               const data = await response.json();
               if (response.ok && data.success) {
-                Alert.alert(
-                  'Reset Complete',
-                  'The receipt is ready to be re-uploaded. Return to the Batch tab and upload the image again.'
-                );
-                // Refresh the receipt to show the new queued state
+                Alert.alert('Reset Complete', 'Return to the Batch tab and upload the image again.');
                 await fetchReceipt();
               } else {
                 Alert.alert('Error', data.error || 'Retry failed');
@@ -144,11 +208,7 @@ const ReceiptDetailScreen = () => {
   const formatDate = (s: string | null) => {
     if (!s) return 'N/A';
     try {
-      return new Date(s).toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      });
+      return new Date(s).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     } catch {
       return s;
     }
@@ -194,7 +254,9 @@ const ReceiptDetailScreen = () => {
     ? receipt.image_path.startsWith('http')
       ? receipt.image_path
       : `${API_URL}/${receipt.image_path}`
-    : null;
+    : receipt.id
+      ? `${API_URL}/receipts/${receipt.id}/image`
+      : null;
 
   const isFailed = receipt.status === 'failed';
 
@@ -210,10 +272,30 @@ const ReceiptDetailScreen = () => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backIcon}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Receipt Details</Text>
-          <TouchableOpacity onPress={handleDelete} style={styles.backIcon}>
-            <Ionicons name="trash-outline" size={24} color="#fff" />
-          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{isEditing ? 'Edit Receipt' : 'Receipt Details'}</Text>
+          {isEditing ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={cancelEdit} style={styles.backIcon}>
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleSave} disabled={saving} style={styles.backIcon}>
+                {saving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="checkmark" size={24} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={beginEdit} style={styles.backIcon}>
+                <Ionicons name="create-outline" size={24} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDelete} style={styles.backIcon}>
+                <Ionicons name="trash-outline" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </LinearGradient>
 
@@ -237,33 +319,101 @@ const ReceiptDetailScreen = () => {
         )}
 
         <View style={styles.card}>
-          <Text style={styles.merchant}>{receipt.merchant_name || 'Unknown Merchant'}</Text>
-          {receipt.merchant_address ? (
-            <Text style={styles.address}>{receipt.merchant_address}</Text>
-          ) : null}
-          <Text style={styles.date}>{formatDate(receipt.transaction_date)}</Text>
+          {isEditing ? (
+            <>
+              <TextInput
+                style={[styles.editInput, styles.editInputLarge]}
+                value={draft.merchant_name}
+                onChangeText={(v) => setDraft({ ...draft, merchant_name: v })}
+                placeholder="Merchant name"
+                placeholderTextColor="#999"
+              />
+              <TextInput
+                style={styles.editInput}
+                value={draft.merchant_address}
+                onChangeText={(v) => setDraft({ ...draft, merchant_address: v })}
+                placeholder="Address"
+                placeholderTextColor="#999"
+              />
+              <TextInput
+                style={styles.editInput}
+                value={draft.transaction_date}
+                onChangeText={(v) => setDraft({ ...draft, transaction_date: v })}
+                placeholder="Date (YYYY-MM-DD)"
+                placeholderTextColor="#999"
+              />
+            </>
+          ) : (
+            <>
+              <Text style={styles.merchant}>{receipt.merchant_name || 'Unknown Merchant'}</Text>
+              {receipt.merchant_address ? (
+                <Text style={styles.address}>{receipt.merchant_address}</Text>
+              ) : null}
+              <Text style={styles.date}>{formatDate(receipt.transaction_date)}</Text>
+            </>
+          )}
         </View>
 
         {!isFailed && (
           <View style={styles.card}>
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Subtotal</Text>
-              <Text style={styles.fieldValue}>
-                {formatCurrency(receipt.subtotal, receipt.currency)}
-              </Text>
-            </View>
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Tax</Text>
-              <Text style={styles.fieldValue}>
-                {formatCurrency(receipt.tax_amount, receipt.currency)}
-              </Text>
-            </View>
-            <View style={[styles.field, styles.totalField]}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>
-                {formatCurrency(receipt.total_amount, receipt.currency)}
-              </Text>
-            </View>
+            {isEditing ? (
+              <>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Subtotal</Text>
+                  <TextInput
+                    style={styles.editInputRight}
+                    value={draft.subtotal}
+                    onChangeText={(v) => setDraft({ ...draft, subtotal: v })}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                  />
+                </View>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Tax</Text>
+                  <TextInput
+                    style={styles.editInputRight}
+                    value={draft.tax_amount}
+                    onChangeText={(v) => setDraft({ ...draft, tax_amount: v })}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                  />
+                </View>
+                <View style={[styles.field, styles.totalField]}>
+                  <Text style={styles.totalLabel}>Total</Text>
+                  <TextInput
+                    style={[styles.editInputRight, styles.editInputLarge]}
+                    value={draft.total_amount}
+                    onChangeText={(v) => setDraft({ ...draft, total_amount: v })}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                  />
+                </View>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Currency</Text>
+                  <TextInput
+                    style={styles.editInputRight}
+                    value={draft.currency}
+                    onChangeText={(v) => setDraft({ ...draft, currency: v })}
+                    placeholder="USD"
+                  />
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Subtotal</Text>
+                  <Text style={styles.fieldValue}>{formatCurrency(receipt.subtotal, receipt.currency)}</Text>
+                </View>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Tax</Text>
+                  <Text style={styles.fieldValue}>{formatCurrency(receipt.tax_amount, receipt.currency)}</Text>
+                </View>
+                <View style={[styles.field, styles.totalField]}>
+                  <Text style={styles.totalLabel}>Total</Text>
+                  <Text style={styles.totalValue}>{formatCurrency(receipt.total_amount, receipt.currency)}</Text>
+                </View>
+              </>
+            )}
           </View>
         )}
 
@@ -281,21 +431,27 @@ const ReceiptDetailScreen = () => {
           </View>
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Confidence</Text>
-            <Text style={styles.fieldValue}>
-              {Math.round((receipt.confidence_score || 0) * 100)}%
-            </Text>
+            <Text style={styles.fieldValue}>{Math.round((receipt.confidence_score || 0) * 100)}%</Text>
           </View>
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>File</Text>
-            <Text style={styles.fieldValue} numberOfLines={1}>
-              {receipt.filename || 'N/A'}
-            </Text>
+            <Text style={styles.fieldValue} numberOfLines={1}>{receipt.filename || 'N/A'}</Text>
           </View>
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Uploaded</Text>
             <Text style={styles.fieldValue}>{formatDate(receipt.created_at)}</Text>
           </View>
-          {receipt.category ? (
+          {isEditing ? (
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Category</Text>
+              <TextInput
+                style={styles.editInputRight}
+                value={draft.category}
+                onChangeText={(v) => setDraft({ ...draft, category: v })}
+                placeholder="Category"
+              />
+            </View>
+          ) : receipt.category ? (
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Category</Text>
               <Text style={styles.fieldValue}>{receipt.category}</Text>
@@ -304,11 +460,7 @@ const ReceiptDetailScreen = () => {
         </View>
 
         {isFailed && (
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={handleRetry}
-            disabled={retrying}
-          >
+          <TouchableOpacity style={styles.retryButton} onPress={handleRetry} disabled={retrying}>
             {retrying ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
@@ -326,87 +478,28 @@ const ReceiptDetailScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#f5f5f5',
-  },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#f5f5f5' },
   loadingText: { marginTop: 12, fontSize: 16, color: '#666' },
   errorText: { marginTop: 12, fontSize: 16, color: '#F44336', textAlign: 'center' },
-  backButton: {
-    marginTop: 20,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: '#4CAF50',
-    borderRadius: 8,
-  },
+  backButton: { marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#4CAF50', borderRadius: 8 },
   backButtonText: { color: '#fff', fontWeight: '600' },
-  header: {
-    paddingTop: 48,
-    paddingBottom: 20,
-    paddingHorizontal: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+  header: { paddingTop: 48, paddingBottom: 20, paddingHorizontal: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
   backIcon: { padding: 4, width: 32 },
   body: { flex: 1 },
   bodyContent: { padding: 16, paddingBottom: 40 },
-
-  failedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFEBEE',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#F44336',
-  },
+  failedBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFEBEE', borderRadius: 12, padding: 16, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#F44336' },
   failedBannerText: { flex: 1, marginLeft: 12 },
   failedBannerTitle: { fontSize: 16, fontWeight: 'bold', color: '#C62828' },
   failedBannerMessage: { fontSize: 13, color: '#B71C1C', marginTop: 4 },
-
-  imageContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 8,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
+  imageContainer: { backgroundColor: '#fff', borderRadius: 12, padding: 8, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   receiptImage: { width: '100%', height: 400, borderRadius: 8 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
+  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   merchant: { fontSize: 22, fontWeight: 'bold', color: '#1A2332' },
   address: { fontSize: 14, color: '#6B7A8F', marginTop: 4 },
   date: { fontSize: 14, color: '#6B7A8F', marginTop: 8 },
-  field: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
+  field: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   fieldLabel: { fontSize: 14, color: '#6B7A8F' },
   fieldValue: { fontSize: 14, color: '#1A2332', fontWeight: '500', flex: 1, textAlign: 'right' },
   totalField: { borderBottomWidth: 0, marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#e0e0e0' },
@@ -416,22 +509,10 @@ const styles = StyleSheet.create({
   lineItems: { fontSize: 14, color: '#333', lineHeight: 20 },
   lineItemRow: { fontSize: 14, color: '#333', lineHeight: 22 },
   statusText: { textTransform: 'capitalize' },
-
-  retryButton: {
-    flexDirection: 'row',
-    backgroundColor: '#F44336',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
+  editInput: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, fontSize: 15, backgroundColor: '#fafafa', marginBottom: 8 },
+  editInputLarge: { fontSize: 18, fontWeight: '600' },
+  editInputRight: { flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 8, fontSize: 14, backgroundColor: '#fafafa', textAlign: 'right', marginLeft: 12 },
+  retryButton: { flexDirection: 'row', backgroundColor: '#F44336', padding: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
   retryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
 
