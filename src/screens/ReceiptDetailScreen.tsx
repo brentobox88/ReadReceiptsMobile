@@ -219,14 +219,27 @@ const ReceiptDetailScreen = () => {
     return `${currency || '$'} ${a.toFixed(2)}`;
   };
 
-  const renderLineItems = (items: string | string[] | null) => {
+  const renderLineItems = (items: any) => {
     if (!items) return null;
-    if (Array.isArray(items)) {
-      return items.map((item, i) => (
-        <Text key={i} style={styles.lineItemRow}>• {item}</Text>
-      ));
+    let parsed: any = items;
+    if (typeof items === 'string') {
+      try { parsed = JSON.parse(items); } catch { parsed = items; }
     }
-    return <Text style={styles.lineItems}>{items}</Text>;
+    if (!Array.isArray(parsed)) {
+      return <Text style={styles.lineItems}>{String(parsed)}</Text>;
+    }
+    return parsed.map((item: any, i: number) => {
+      let label = '';
+      if (item && typeof item === 'object') {
+        label = String(item.description || item.name || item.item || '');
+        if (item.amount != null) {
+          label = label + ' - ' + String(item.amount);
+        }
+      } else {
+        label = String(item);
+      }
+      return <Text key={i} style={styles.lineItemRow}>{label}</Text>;
+    });
   };
 
   if (loading) {

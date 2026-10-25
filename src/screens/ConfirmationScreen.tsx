@@ -25,7 +25,7 @@ interface ReceiptData {
   subtotal: number | null;
   currency: string | null;
   confidence_score: number | null;
-  line_items: any[];
+  line_items: any[] | null;
   parsed_data: Record<string, any> | null;
   status: string;
   created_at: string;
@@ -33,7 +33,7 @@ interface ReceiptData {
 
 const ConfirmationScreen = () => {
   const route = useRoute();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { receiptId, imageUri } = route.params as { receiptId: string; imageUri?: string };
 
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
@@ -46,7 +46,7 @@ const ConfirmationScreen = () => {
     try {
       const res = await fetch(`${API_BASE}/receipts/${receiptId}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const data = (await res.json()) as ReceiptData;
       setReceipt(data);
       setEditedReceipt(data);
     } catch (error) {
@@ -75,18 +75,19 @@ const ConfirmationScreen = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const payload = {
+        merchant_name: editedReceipt.merchant_name ?? null,
+        merchant_address: editedReceipt.merchant_address ?? null,
+        transaction_date: editedReceipt.transaction_date ?? null,
+        total_amount: editedReceipt.total_amount ?? null,
+        tax_amount: editedReceipt.tax_amount ?? null,
+        subtotal: editedReceipt.subtotal ?? null,
+        currency: editedReceipt.currency ?? null,
+      };
       const res = await fetch(`${API_BASE}/receipts/${receiptId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          merchant_name: editedReceipt.merchant_name,
-          merchant_address: editedReceipt.merchant_address,
-          transaction_date: editedReceipt.transaction_date,
-          total_amount: editedReceipt.total_amount,
-          tax_amount: editedReceipt.tax_amount,
-          subtotal: editedReceipt.subtotal,
-          currency: editedReceipt.currency,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       Alert.alert('Success', 'Receipt updated');
@@ -101,7 +102,7 @@ const ConfirmationScreen = () => {
   };
 
   const handleConfirm = () => {
-    (navigation as any).navigate('ReceiptsList');
+    navigation.dismiss();
   };
 
   const getConfidenceColor = (confidence: number) => {
@@ -151,8 +152,8 @@ const ConfirmationScreen = () => {
   const displayCurrency = (src as any).currency || parsed.currency || 'USD';
   const displayTip = parsed.tip_amount || 0;
   const displayConfidence = receipt.confidence_score ?? 0;
-  const confidenceScores = parsed.confidence_scores || {};
-  const entitiesFound = parsed.entities_found || [];
+  const confidenceScores: Record<string, number> = parsed.confidence_scores || {};
+  const entitiesFound: string[] = parsed.entities_found || [];
 
   const isLowConfidence = displayConfidence > 0 && displayConfidence < 0.8;
 
@@ -298,21 +299,24 @@ const ConfirmationScreen = () => {
       {Object.keys(confidenceScores).length > 0 && (
         <View style={styles.confidenceDetailsContainer}>
           <Text style={styles.sectionTitle}>Field Confidence</Text>
-          {Object.entries(confidenceScores).map(([field, score]) => (
-            <View key={field} style={styles.confidenceRow}>
-              <Text style={styles.confidenceField}>{field.replace(/_/g, ' ')}</Text>
-              <View style={styles.confidenceMiniBarContainer}>
-                <View
-                  style={[
-                    styles.confidenceMiniBar,
-                    { backgroundColor: getConfidenceColor(score as number) },
-                    { width: `${Math.round((score as number) * 100)}%` as any },
-                  ]}
-                />
+          {(Object.entries(confidenceScores) as [string, number][]).map(([field, score]) => {
+            const pct = `${Math.round(score * 100)}%`;
+            return (
+              <View key={field} style={styles.confidenceRow}>
+                <Text style={styles.confidenceField}>{field.replace(/_/g, ' ')}</Text>
+                <View style={styles.confidenceMiniBarContainer}>
+                  <View
+                    style={[
+                      styles.confidenceMiniBar,
+                      { backgroundColor: getConfidenceColor(score) },
+                      { width: pct as unknown as number },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.confidenceValue}>{Math.round(score * 100)}%</Text>
               </View>
-              <Text style={styles.confidenceValue}>{Math.round((score as number) * 100)}%</Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
 
@@ -331,10 +335,10 @@ const ConfirmationScreen = () => {
       )}
 
       {/* Line Items */}
-      {receipt.line_items && receipt.line_items.length > 0 && (
+      {receipt.line_items && Array.isArray(receipt.line_items) && receipt.line_items.length > 0 && (
         <View style={styles.lineItemsContainer}>
           <Text style={styles.sectionTitle}>Line Items</Text>
-          {receipt.line_items.map((item: any, index: number) => (
+          {(receipt.line_items as any[]).map((item: any, index: number) => (
             <View key={index} style={styles.lineItemCard}>
               <Text style={styles.lineItemName}>{item.description || 'Item'}</Text>
               <View style={styles.lineItemRow}>
