@@ -47,3 +47,7 @@ yarn-error.*
 *.bak*
 
 backups/
+
+# Local audit bundles (not for the repo)
+ux-audit-bundle.txt
+*.audit.txt
