@@ -45,11 +45,6 @@ export const FEATURES: FeatureMap = {
   },
 
   // === PRO TIER (Coming Soon) ===
-  receiptNotes: {
-    tier: 'pro',
-    enabled: true,
-    description: 'Add custom notes to receipts'
-  },
   unlimitedScanning: {
     tier: 'pro',
     enabled: false,

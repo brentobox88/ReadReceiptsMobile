@@ -8,6 +8,7 @@ import {
   TextStyle,
   TouchableOpacity,
   Dimensions,
+  StyleProp,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from '@react-native-community/blur';
@@ -17,7 +18,7 @@ const { width } = Dimensions.get('window');
 
 interface GlassCardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   gradient?: boolean;
   onPress?: () => void;
   elevated?: boolean;
@@ -69,7 +70,7 @@ export const GlassStatCard: React.FC<{
   icon: React.ReactNode;
   change?: string;
   positive?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }> = ({ title, value, icon, change, positive = true, style }) => {
   return (
     <GlassCard style={[styles.statCard, style]} elevated>

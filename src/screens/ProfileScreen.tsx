@@ -1,5 +1,5 @@
 // src/screens/ProfileScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,42 +9,134 @@ import {
   Alert,
   Switch,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { signOut } from 'firebase/auth';
+import { auth } from '../config/firebase';
+
+const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
+
+interface Stats {
+  receiptCount: number;
+  totalSpent: number;
+  avgConfidence: number;
+}
 
 const ProfileScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [stats, setStats] = useState<Stats>({
+    receiptCount: 0,
+    totalSpent: 0,
+    avgConfidence: 0,
+  });
+
+  const currentUser = auth.currentUser;
+  const displayName = currentUser?.displayName || (currentUser?.email ? currentUser.email.split('@')[0] : 'Account');
+  const email = currentUser?.email || 'Not signed in';
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/receipts`);
+      const data = await res.json();
+      if (data.receipts && Array.isArray(data.receipts)) {
+        const receipts = data.receipts;
+        const total = receipts.reduce(
+          (sum: number, r: any) => sum + (r.total_amount || 0),
+          0
+        );
+        const avg =
+          receipts.length > 0
+            ? receipts.reduce(
+                (sum: number, r: any) => sum + (r.confidence_score || 0),
+                0
+              ) / receipts.length
+            : 0;
+        setStats({
+          receiptCount: receipts.length,
+          totalSpent: total,
+          avgConfidence: avg,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchStats();
+    }, [fetchStats])
+  );
 
   const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: () => {
-          // Sign out logic here
-          Alert.alert('Signed Out', 'You have been signed out successfully.');
-        }}
-      ]
-    );
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut(auth);
+          } catch (e: any) {
+            Alert.alert('Error', e.message || 'Failed to sign out');
+          }
+        },
+      },
+    ]);
   };
 
   const menuItems = [
-    { icon: 'person-outline', label: 'Account Settings', color: '#4CAF50' },
-    { icon: 'receipt-outline', label: 'My Receipts', color: '#2196F3' },
-    { icon: 'stats-chart-outline', label: 'Reports', color: '#FF9800' },
-    { icon: 'download-outline', label: 'Export Data', color: '#9C27B0' },
-    { icon: 'star-outline', label: 'Subscription', color: '#FFC107' },
-    { icon: 'help-circle-outline', label: 'Help & Support', color: '#607D8B' },
-    { icon: 'information-circle-outline', label: 'About', color: '#795548' },
+    {
+      icon: 'receipt-outline',
+      label: 'My Receipts',
+      color: '#2196F3',
+      action: () => navigation.navigate('MainTabs', { screen: 'Receipts' }),
+    },
+    {
+      icon: 'stats-chart-outline',
+      label: 'Reports',
+      color: '#FF9800',
+      action: () => navigation.navigate('MainTabs', { screen: 'Reports' }),
+    },
+    {
+      icon: 'download-outline',
+      label: 'Export Data',
+      color: '#9C27B0',
+      action: () => navigation.navigate('Export'),
+    },
+    {
+      icon: 'star-outline',
+      label: 'Subscription',
+      color: '#FFC107',
+      action: () => navigation.navigate('Subscription'),
+    },
+    {
+      icon: 'help-circle-outline',
+      label: 'Help & Support',
+      color: '#607D8B',
+      action: () => Alert.alert('Help & Support', 'Coming soon'),
+    },
+    {
+      icon: 'information-circle-outline',
+      label: 'About',
+      color: '#795548',
+      action: () =>
+        Alert.alert(
+          'ReadReceipts',
+          'Version 1.0.0\n\nBulk receipt scanner with line-item extraction.'
+        ),
+    },
   ];
+
+  const formatCurrency = (amount: number) => {
+    return '$' + amount.toFixed(2);
+  };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <LinearGradient
         colors={['#4CAF50', '#2196F3']}
         style={styles.header}
@@ -56,50 +148,43 @@ const ProfileScreen = () => {
             <Ionicons name="person" size={48} color="#fff" />
           </View>
           <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>John Doe</Text>
-            <Text style={styles.headerSubtitle}>john.doe@email.com</Text>
+            <Text style={styles.headerTitle}>{displayName}</Text>
+            <Text style={styles.headerSubtitle}>{email}</Text>
           </View>
         </View>
         <View style={styles.headerStats}>
           <View style={styles.headerStatItem}>
-            <Text style={styles.headerStatValue}>24</Text>
+            <Text style={styles.headerStatValue}>{stats.receiptCount}</Text>
             <Text style={styles.headerStatLabel}>Receipts</Text>
           </View>
           <View style={styles.headerDivider} />
           <View style={styles.headerStatItem}>
-            <Text style={styles.headerStatValue}>,247</Text>
+            <Text style={styles.headerStatValue}>
+              {formatCurrency(stats.totalSpent)}
+            </Text>
             <Text style={styles.headerStatLabel}>Total Spent</Text>
           </View>
           <View style={styles.headerDivider} />
           <View style={styles.headerStatItem}>
-            <Text style={styles.headerStatValue}>92%</Text>
+            <Text style={styles.headerStatValue}>
+              {Math.round(stats.avgConfidence * 100)}%
+            </Text>
             <Text style={styles.headerStatLabel}>Confidence</Text>
           </View>
         </View>
       </LinearGradient>
 
-      {/* Menu Items */}
       <ScrollView style={styles.menuContainer}>
         {menuItems.map((item, index) => (
           <TouchableOpacity
             key={index}
             style={styles.menuItem}
-            onPress={() => {
-              if (item.label === 'My Receipts') {
-                navigation.navigate('Receipts' as never);
-              } else if (item.label === 'Reports') {
-                navigation.navigate('Reports' as never);
-              } else if (item.label === 'Export Data') {
-                navigation.navigate('Export' as never);
-              } else if (item.label === 'Subscription') {
-                navigation.navigate('Subscription' as never);
-              } else {
-                Alert.alert(item.label, 'Feature coming soon!');
-              }
-            }}
+            onPress={item.action}
           >
             <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: item.color + '20' }]}>
+              <View
+                style={[styles.menuIcon, { backgroundColor: item.color + '20' }]}
+              >
                 <Ionicons name={item.icon as any} size={22} color={item.color} />
               </View>
               <Text style={styles.menuLabel}>{item.label}</Text>
@@ -108,7 +193,6 @@ const ProfileScreen = () => {
           </TouchableOpacity>
         ))}
 
-        {/* Settings Section */}
         <View style={styles.settingsSection}>
           <Text style={styles.settingsTitle}>Settings</Text>
           <View style={styles.settingsItem}>
@@ -137,7 +221,6 @@ const ProfileScreen = () => {
           </View>
         </View>
 
-        {/* Sign Out Button */}
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <Ionicons name="log-out-outline" size={22} color="#F44336" />
           <Text style={styles.signOutText}>Sign Out</Text>
@@ -152,10 +235,7 @@ const ProfileScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: {
     paddingTop: 48,
     paddingBottom: 24,
@@ -163,10 +243,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  headerContent: { flexDirection: 'row', alignItems: 'center' },
   profileIcon: {
     width: 72,
     height: 72,
@@ -176,14 +253,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 16,
   },
-  headerText: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
+  headerText: { flex: 1 },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
   headerSubtitle: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
@@ -197,27 +268,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.15)',
   },
-  headerStatItem: {
-    alignItems: 'center',
-  },
-  headerStatValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
+  headerStatItem: { alignItems: 'center' },
+  headerStatValue: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
   headerStatLabel: {
     fontSize: 11,
     color: 'rgba(255,255,255,0.7)',
     marginTop: 2,
   },
-  headerDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-  },
-  menuContainer: {
-    flex: 1,
-    padding: 16,
-  },
+  headerDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.15)' },
+  menuContainer: { flex: 1, padding: 16 },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -232,10 +291,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  menuItemLeft: { flexDirection: 'row', alignItems: 'center' },
   menuIcon: {
     width: 40,
     height: 40,
@@ -244,11 +300,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  menuLabel: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-  },
+  menuLabel: { fontSize: 16, color: '#333', fontWeight: '500' },
   settingsSection: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -275,15 +327,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
   },
-  settingsItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingsLabel: {
-    fontSize: 15,
-    color: '#333',
-    marginLeft: 12,
-  },
+  settingsItemLeft: { flexDirection: 'row', alignItems: 'center' },
+  settingsLabel: { fontSize: 15, color: '#333', marginLeft: 12 },
   signOutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -302,15 +347,8 @@ const styles = StyleSheet.create({
     color: '#F44336',
     marginLeft: 8,
   },
-  footer: {
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#999',
-  },
+  footer: { alignItems: 'center', paddingVertical: 16 },
+  footerText: { fontSize: 12, color: '#999' },
 });
 
 export default ProfileScreen;
-

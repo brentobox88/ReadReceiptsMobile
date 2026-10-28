@@ -66,8 +66,6 @@ const ReceiptsListScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredReceipts, setFilteredReceipts] = useState<Receipt[]>([]);
-  const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
   const [filters, setFilters] = useState<ReceiptFilters>(DEFAULT_FILTERS);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
 
@@ -130,47 +128,10 @@ const ReceiptsListScreen = () => {
   };
 
   const handleReceiptPress = (receipt: Receipt) => {
-    setSelectedReceipt(receipt);
-    setModalVisible(true);
-  };
-
-  const handleViewReceipt = (receipt: Receipt) => {
-    setModalVisible(false);
     (navigation as any).navigate('ReceiptDetail', { receiptId: receipt.id });
   };
 
-  const handleDeleteReceipt = async () => {
-    if (!selectedReceipt) return;
 
-    Alert.alert(
-      'Delete Receipt',
-      'Are you sure you want to delete this receipt?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await fetch(API_URL + '/receipts/' + selectedReceipt.id, {
-                method: 'DELETE',
-              });
-
-              if (response.ok) {
-                setModalVisible(false);
-                Alert.alert('Success', 'Receipt deleted!');
-                fetchReceipts();
-              } else {
-                Alert.alert('Error', 'Failed to delete receipt');
-              }
-            } catch (error) {
-              Alert.alert('Error', 'Network error');
-            }
-          }
-        }
-      ]
-    );
-  };
 
   const getConfidenceColor = (score: number) => {
     if (score >= 0.8) return '#4CAF50';
@@ -450,45 +411,6 @@ const ReceiptsListScreen = () => {
                 </Pressable>
               </View>
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Receipt Details</Text>
-              <View style={styles.modalHeaderActions}>
-                <TouchableOpacity onPress={handleDeleteReceipt} style={styles.deleteButton}>
-                  <Ionicons name="trash-outline" size={24} color="#F44336" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={28} color="#333" />
-                </TouchableOpacity>
-              </View>
-            </View>
-            {selectedReceipt && (
-              <ScrollView style={styles.modalBody}>
-                <View style={styles.modalField}>
-                  <Text style={styles.modalLabel}>Merchant</Text>
-                  <Text style={styles.modalValue}>{selectedReceipt.merchant_name || 'N/A'}</Text>
-                </View>
-                <View style={styles.modalField}>
-                  <Text style={styles.modalLabel}>Date</Text>
-                  <Text style={styles.modalValue}>{formatDate(selectedReceipt.transaction_date)}</Text>
-                </View>
-                <View style={[styles.modalField, styles.modalTotalField]}>
-                  <Text style={styles.modalTotalLabel}>Total</Text>
-                  <Text style={styles.modalTotalValue}>
-                    {formatCurrency(selectedReceipt.total_amount || 0, selectedReceipt.currency || '$')}
-                  </Text>
-                </View>
-                <TouchableOpacity style={styles.viewReceiptButton} onPress={() => handleViewReceipt(selectedReceipt)}>
-                  <Text style={styles.viewReceiptButtonText}>View Full Receipt</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            )}
           </View>
         </View>
       </Modal>

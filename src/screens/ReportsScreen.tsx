@@ -454,6 +454,7 @@ const ReportsScreen = () => {
             width={width - 32}
             height={200}
             yAxisLabel="$"
+            yAxisSuffix=""
             chartConfig={{
               backgroundColor: '#ffffff',
               backgroundGradientFrom: '#ffffff',
@@ -505,7 +506,7 @@ const ReportsScreen = () => {
                       style={[
                         styles.taxBarFill, 
                         { 
-                          width: Math.max(barWidth, 5) + '%',
+                          width: (Math.max(barWidth, 5) + '%') as unknown as number,
                           backgroundColor: colors[index % colors.length]
                         }
                       ]} 
@@ -536,7 +537,7 @@ const ReportsScreen = () => {
                     {index + 1}. {merchant.name}
                   </Text>
                   <View style={styles.merchantBar}>
-                    <View style={[styles.merchantBarFill, { width: percentage + '%' }]} />
+                    <View style={[styles.merchantBarFill, { width: (percentage + '%') as unknown as number }]} />
                   </View>
                   <Text style={styles.merchantAmount}>{formatCurrency(merchant.amount)}</Text>
                 </View>

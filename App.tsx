@@ -41,14 +41,10 @@ function MainTabs() {
             iconName = focused ? 'camera' : 'camera-outline';
           } else if (route.name === 'Receipts') {
             iconName = focused ? 'receipt' : 'receipt-outline';
-          } else if (route.name === 'Export') {
-            iconName = focused ? 'download' : 'download-outline';
-          } else if (route.name === 'Subscription') {
-            iconName = focused ? 'star' : 'star-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
           } else if (route.name === 'Reports') {
             iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+          } else if (route.name === 'Profile') {
+            iconName = focused ? 'person' : 'person-outline';
           } else {
             iconName = 'circle';
           }
@@ -68,22 +64,36 @@ function MainTabs() {
           fontSize: 12,
           fontWeight: '500',
         },
-        headerStyle: {
-          backgroundColor: '#4CAF50',
-        },
+        headerStyle: { backgroundColor: '#4CAF50' },
         headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
+        headerTitleStyle: { fontWeight: 'bold' },
       })}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'Summary', tabBarLabel: 'Summary' }} />
-      <Tab.Screen name="Scan" component={CameraScreen} options={{ title: 'Scan Receipt', tabBarLabel: 'Scan' }} />
-      <Tab.Screen name="Receipts" component={ReceiptsListScreen} options={{ title: 'My Receipts', tabBarLabel: 'Receipts' }} />
-      <Tab.Screen name="Export" component={ExportScreen} options={{ title: 'Export', tabBarLabel: 'Export' }} />
-      <Tab.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports', tabBarLabel: 'Reports' }} />
-      <Tab.Screen name="Subscription" component={SubscriptionScreen} options={{ title: 'Subscription', tabBarLabel: 'Upgrade' }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile', tabBarLabel: 'Profile' }} />
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{ title: 'Summary', tabBarLabel: 'Summary' }}
+      />
+      <Tab.Screen
+        name="Scan"
+        component={CameraScreen}
+        options={{ title: 'Scan Receipt', tabBarLabel: 'Scan' }}
+      />
+      <Tab.Screen
+        name="Receipts"
+        component={ReceiptsListScreen}
+        options={{ title: 'My Receipts', tabBarLabel: 'Receipts' }}
+      />
+      <Tab.Screen
+        name="Reports"
+        component={ReportsScreen}
+        options={{ title: 'Reports', tabBarLabel: 'Reports' }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ title: 'Profile', tabBarLabel: 'Profile' }}
+      />
     </Tab.Navigator>
   );
 }
@@ -141,11 +151,41 @@ export default function App() {
                 headerTitleStyle: { fontWeight: 'bold' },
               }}
             >
-              <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-              <Stack.Screen name="Confirmation" component={ConfirmationScreen} options={{ title: 'Review Receipt', presentation: 'modal' }} />
-              <Stack.Screen name="BatchUpload" component={BatchUploadScreen} options={{ title: 'Batch Upload', presentation: 'modal' }} />
-              <Stack.Screen name="BatchProgress" component={BatchProgressScreen} options={{ title: 'Batch Progress', presentation: 'modal' }} />
-              <Stack.Screen name="ReceiptDetail" component={ReceiptDetailScreen} options={{ title: 'Receipt Details' }} />
+              <Stack.Screen
+                name="MainTabs"
+                component={MainTabs}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Confirmation"
+                component={ConfirmationScreen}
+                options={{ title: 'Review Receipt', presentation: 'modal' }}
+              />
+              <Stack.Screen
+                name="BatchUpload"
+                component={BatchUploadScreen}
+                options={{ title: 'Batch Upload', presentation: 'modal' }}
+              />
+              <Stack.Screen
+                name="BatchProgress"
+                component={BatchProgressScreen}
+                options={{ title: 'Batch Progress', presentation: 'modal' }}
+              />
+              <Stack.Screen
+                name="ReceiptDetail"
+                component={ReceiptDetailScreen}
+                options={{ title: 'Receipt Details' }}
+              />
+              <Stack.Screen
+                name="Export"
+                component={ExportScreen}
+                options={{ title: 'Export' }}
+              />
+              <Stack.Screen
+                name="Subscription"
+                component={SubscriptionScreen}
+                options={{ title: 'Upgrade' }}
+              />
             </Stack.Navigator>
           </NavigationContainer>
         </SubscriptionProvider>

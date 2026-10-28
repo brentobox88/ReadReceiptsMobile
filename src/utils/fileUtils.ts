@@ -1,41 +1,36 @@
-﻿// src/utils/fileUtils.ts - Expo Compatible Version
-import * as FileSystem from 'expo-file-system';
+// src/utils/fileUtils.ts - Expo SDK 51+ File API
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 
 export const saveAndShareFile = async (fileData: Blob, fileName: string, mimeType: string) => {
   try {
-    // Convert blob to base64
     const reader = new FileReader();
     reader.readAsDataURL(fileData);
-    
+
     return new Promise((resolve, reject) => {
       reader.onload = async () => {
         try {
           const base64Data = reader.result as string;
           const base64Content = base64Data.split(',')[1];
-          
-          // Save to documents directory using Expo FileSystem
-          const fileUri = FileSystem.documentDirectory + fileName;
-          await FileSystem.writeAsStringAsync(fileUri, base64Content, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          
-          // Check if sharing is available
+
+          const file = new File(Paths.document, fileName);
+          file.create({ overwrite: true, intermediates: true });
+          file.write(base64Content, { encoding: 'base64' });
+
           const isAvailable = await Sharing.isAvailableAsync();
           if (!isAvailable) {
             console.log('Sharing is not available on this device');
-            resolve(fileUri);
+            resolve(file.uri);
             return;
           }
-          
-          // Share the file
-          await Sharing.shareAsync(fileUri, {
+
+          await Sharing.shareAsync(file.uri, {
             mimeType: mimeType,
             dialogTitle: 'Export Receipts',
           });
-          
-          resolve(fileUri);
+
+          resolve(file.uri);
         } catch (error) {
           reject(error);
         }

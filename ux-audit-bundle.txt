@@ -1,0 +1,3589 @@
+﻿
+
+
+================================================================
+FILE: App.tsx
+================================================================
+SIZE: 5981 bytes
+----
+// App.tsx - ReadReceipts with Authentication
+import 'react-native-gesture-handler';
+import React, { useState, useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { SubscriptionProvider } from './src/context/SubscriptionContext';
+import { auth } from './src/config/firebase';
+import {
+  CameraScreen,
+  ReceiptsListScreen,
+  ProfileScreen,
+  SplashScreen,
+  ConfirmationScreen,
+  DashboardScreen,
+  SubscriptionScreen,
+  AuthScreen,
+  ExportScreen,
+  ReportsScreen,
+  BatchUploadScreen,
+  BatchProgressScreen,
+  ReceiptDetailScreen,
+} from './src/screens';
+
+const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
+
+function MainTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: string;
+          if (route.name === 'Dashboard') {
+            iconName = focused ? 'grid' : 'grid-outline';
+          } else if (route.name === 'Scan') {
+            iconName = focused ? 'camera' : 'camera-outline';
+          } else if (route.name === 'Receipts') {
+            iconName = focused ? 'receipt' : 'receipt-outline';
+          } else if (route.name === 'Export') {
+            iconName = focused ? 'download' : 'download-outline';
+          } else if (route.name === 'Subscription') {
+            iconName = focused ? 'star' : 'star-outline';
+          } else if (route.name === 'Profile') {
+            iconName = focused ? 'person' : 'person-outline';
+          } else if (route.name === 'Reports') {
+            iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+          } else {
+            iconName = 'circle';
+          }
+          return <Ionicons name={iconName as any} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#4CAF50',
+        tabBarInactiveTintColor: 'gray',
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopWidth: 1,
+          borderTopColor: '#e0e0e0',
+          height: 70,
+          paddingBottom: 8,
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
+        },
+        headerStyle: {
+          backgroundColor: '#4CAF50',
+        },
+        headerTintColor: '#fff',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      })}
+    >
+      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'Summary', tabBarLabel: 'Summary' }} />
+      <Tab.Screen name="Scan" component={CameraScreen} options={{ title: 'Scan Receipt', tabBarLabel: 'Scan' }} />
+      <Tab.Screen name="Receipts" component={ReceiptsListScreen} options={{ title: 'My Receipts', tabBarLabel: 'Receipts' }} />
+      <Tab.Screen name="Export" component={ExportScreen} options={{ title: 'Export', tabBarLabel: 'Export' }} />
+      <Tab.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports', tabBarLabel: 'Reports' }} />
+      <Tab.Screen name="Subscription" component={SubscriptionScreen} options={{ title: 'Subscription', tabBarLabel: 'Upgrade' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile', tabBarLabel: 'Profile' }} />
+    </Tab.Navigator>
+  );
+}
+
+export default function App() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
+      if (user) {
+        console.log('Auth state: signed in', user.email);
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+      } else {
+        console.log('Auth state: signed out');
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  const handleAuthSuccess = (userData: any) => {
+    console.log('Auth Success:', userData?.email);
+    setCurrentUser(userData);
+    setIsAuthenticated(true);
+  };
+
+  if (isLoading) {
+    return <SplashScreen onFinish={() => setIsLoading(false)} />;
+  }
+
+  if (!isAuthenticated) {
+    return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <BottomSheetModalProvider>
+        <SubscriptionProvider>
+          <NavigationContainer>
+            <Stack.Navigator
+              screenOptions={{
+                headerStyle: { backgroundColor: '#4CAF50' },
+                headerTintColor: '#fff',
+                headerTitleStyle: { fontWeight: 'bold' },
+              }}
+            >
+              <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+              <Stack.Screen name="Confirmation" component={ConfirmationScreen} options={{ title: 'Review Receipt', presentation: 'modal' }} />
+              <Stack.Screen name="BatchUpload" component={BatchUploadScreen} options={{ title: 'Batch Upload', presentation: 'modal' }} />
+              <Stack.Screen name="BatchProgress" component={BatchProgressScreen} options={{ title: 'Batch Progress', presentation: 'modal' }} />
+              <Stack.Screen name="ReceiptDetail" component={ReceiptDetailScreen} options={{ title: 'Receipt Details' }} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </SubscriptionProvider>
+      </BottomSheetModalProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+
+================================================================
+FILE: src\screens\DashboardScreen.tsx
+================================================================
+SIZE: 13427 bytes
+----
+// src/screens/DashboardScreen.tsx
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import FloatingScanButton from '../components/FloatingScanButton';
+
+interface Receipt {
+  id: string;
+  merchant_name: string;
+  merchant_address: string;
+  transaction_date: string;
+  total_amount: number;
+  tax_amount: number;
+  currency: string;
+  filename: string;
+  created_at: string;
+  confidence_score: number;
+  status: string;
+  category?: string;
+}
+
+const DashboardScreen = () => {
+  const navigation = useNavigation();
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
+
+  const fetchReceipts = async () => {
+    try {
+      const response = await fetch(API_URL + '/receipts');
+      const data = await response.json();
+      if (data.receipts) {
+        setReceipts(data.receipts);
+      }
+    } catch (error) {
+      console.error('Error fetching receipts:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchReceipts();
+    }, [])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchReceipts();
+  };
+
+  const totalReceipts = receipts.length;
+  const totalSpent = receipts.reduce((sum, r) => sum + (r.total_amount || 0), 0);
+  const avgConfidence = receipts.length > 0 
+    ? receipts.reduce((sum, r) => sum + (r.confidence_score || 0), 0) / receipts.length 
+    : 0;
+  const needsReview = receipts.filter(r => (r.confidence_score || 0) < 0.7).length;
+
+  const recentReceipts = [...receipts]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
+
+  const getConfidenceColor = (score: number) => {
+    if (score >= 0.8) return '#4CAF50';
+    if (score >= 0.6) return '#FF9800';
+    return '#F44336';
+  };
+
+  const getConfidenceLabel = (score: number) => {
+    if (score >= 0.8) return 'High';
+    if (score >= 0.6) return 'Medium';
+    return 'Low';
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatCurrency = (amount: number, currency: string) => {
+    return (currency || '$') + amount.toFixed(2);
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.loadingText}>Loading summary...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4CAF50" />
+        }
+      >
+        {/* Header */}
+        <LinearGradient
+          colors={['#4CAF50', '#2196F3']}
+          style={styles.header}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.greeting}>Welcome Back</Text>
+              <Text style={styles.headerTitle}>Receipt Summary</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => (navigation as any).navigate('Export')}
+              style={styles.exportButton}
+            >
+              <Ionicons name="download-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.headerStats}>
+            <View style={styles.headerStatItem}>
+              <Text style={styles.headerStatValue}>{totalReceipts}</Text>
+              <Text style={styles.headerStatLabel}>Receipts</Text>
+            </View>
+            <View style={styles.headerDivider} />
+            <View style={styles.headerStatItem}>
+              <Text style={styles.headerStatValue}></Text>
+              <Text style={styles.headerStatLabel}>Total Spent</Text>
+            </View>
+            <View style={styles.headerDivider} />
+            <View style={styles.headerStatItem}>
+              <Text style={styles.headerStatValue}>{Math.round(avgConfidence * 100)}%</Text>
+              <Text style={styles.headerStatLabel}>Avg Confidence</Text>
+            </View>
+            <View style={styles.headerDivider} />
+            <View style={styles.headerStatItem}>
+              <Text style={[styles.headerStatValue, needsReview > 0 ? styles.warningText : null]}>
+                {needsReview}
+              </Text>
+              <Text style={styles.headerStatLabel}>Needs Review</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('MainTabs', { screen: 'Scan' })}>
+            <View style={[styles.quickActionIcon, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="camera" size={24} color="#4CAF50" />
+            </View>
+            <Text style={styles.quickActionLabel}>Scan</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('Receipts')}>
+            <View style={[styles.quickActionIcon, { backgroundColor: '#E3F2FD' }]}>
+              <Ionicons name="receipt" size={24} color="#2196F3" />
+            </View>
+            <Text style={styles.quickActionLabel}>Receipts</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('Reports')}>
+            <View style={[styles.quickActionIcon, { backgroundColor: '#FFF3E0' }]}>
+              <Ionicons name="stats-chart" size={24} color="#FF9800" />
+            </View>
+            <Text style={styles.quickActionLabel}>Reports</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('BatchUpload')}>
+            <View style={[styles.quickActionIcon, { backgroundColor: '#F3E5F5' }]}>
+              <Ionicons name="cloud-upload" size={24} color="#9C27B0" />
+            </View>
+            <Text style={styles.quickActionLabel}>Batch</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('Export')}>
+            <View style={[styles.quickActionIcon, { backgroundColor: '#F3E5F5' }]}>
+              <Ionicons name="download" size={24} color="#9C27B0" />
+            </View>
+            <Text style={styles.quickActionLabel}>Export</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Recent Receipts */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Receipts</Text>
+            <TouchableOpacity onPress={() => (navigation as any).navigate('Receipts')}>
+              <Text style={styles.seeAll}>See All →</Text>
+            </TouchableOpacity>
+          </View>
+
+          {recentReceipts.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="receipt-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyText}>No receipts yet</Text>
+              <Text style={styles.emptySubtext}>Scan your first receipt from the Camera tab</Text>
+            </View>
+          ) : (
+            recentReceipts.map((receipt) => (
+              <TouchableOpacity
+                key={receipt.id}
+                style={styles.receiptItem}
+                onPress={() => (navigation as any).navigate('Confirmation', { receiptId: receipt.id })}
+              >
+                <View style={styles.receiptLeft}>
+                  <View style={[styles.receiptIcon, { backgroundColor: getConfidenceColor(receipt.confidence_score || 0) + '20' }]}>
+                    <Ionicons name="receipt" size={16} color={getConfidenceColor(receipt.confidence_score || 0)} />
+                  </View>
+                  <View>
+                    <Text style={styles.receiptMerchant}>{receipt.merchant_name || 'Unknown'}</Text>
+                    <Text style={styles.receiptDate}>{formatDate(receipt.transaction_date)}</Text>
+                  </View>
+                </View>
+                <View style={styles.receiptRight}>
+                  <Text style={styles.receiptAmount}>
+                    {formatCurrency(receipt.total_amount || 0, receipt.currency || '$')}
+                  </Text>
+                  <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(receipt.confidence_score || 0) + '20' }]}>
+                    <Text style={[styles.confidenceText, { color: getConfidenceColor(receipt.confidence_score || 0) }]}>
+                      {getConfidenceLabel(receipt.confidence_score || 0)}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+      </ScrollView>
+      <FloatingScanButton />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+  },
+  header: {
+    paddingTop: 48,
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  greeting: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 2,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  exportButton: {
+    padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 8,
+  },
+  headerStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.15)',
+  },
+  headerStatItem: {
+    alignItems: 'center',
+  },
+  headerStatValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerStatLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+  },
+  headerDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  warningText: {
+    color: '#FFC107',
+  },
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginTop: -20,
+    marginHorizontal: 16,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  quickAction: {
+    alignItems: 'center',
+  },
+  quickActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  quickActionLabel: {
+    fontSize: 12,
+    color: '#666',
+  },
+  section: {
+    backgroundColor: '#fff',
+    margin: 16,
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  seeAll: {
+    fontSize: 14,
+    color: '#4CAF50',
+    fontWeight: '500',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  receiptItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  receiptLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  receiptIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  receiptMerchant: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#333',
+  },
+  receiptDate: {
+    fontSize: 12,
+    color: '#666',
+  },
+  receiptRight: {
+    alignItems: 'flex-end',
+  },
+  receiptAmount: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+  },
+  confidenceBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginTop: 2,
+  },
+  confidenceText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+});
+
+export default DashboardScreen;
+
+
+
+================================================================
+FILE: src\screens\ReceiptsListScreen.tsx
+================================================================
+SIZE: 24524 bytes
+----
+// src/screens/ReceiptsListScreen.tsx
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
+  TextInput,
+  Modal,
+  FlatList,
+  ScrollView,
+  Image,
+  Pressable,
+} from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { Calendar } from 'react-native-calendars';
+import { LinearGradient } from 'expo-linear-gradient';
+import FloatingScanButton from '../components/FloatingScanButton';
+import { BottomSheetModal, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { FilterPill } from '../components/FilterPill';
+import {
+  ReceiptFilters,
+  SortOption,
+  DEFAULT_FILTERS,
+  activeFilterCount,
+  toQueryParams,
+  CURRENCIES,
+} from '../utils/filters';
+
+const CATEGORIES = [
+  { id: 'food', label: 'Food', icon: 'fast-food' },
+  { id: 'transport', label: 'Transport', icon: 'car' },
+  { id: 'shopping', label: 'Shopping', icon: 'bag' },
+  { id: 'utilities', label: 'Utilities', icon: 'bulb' },
+  { id: 'entertainment', label: 'Entertainment', icon: 'film' },
+  { id: 'health', label: 'Health', icon: 'fitness' },
+  { id: 'travel', label: 'Travel', icon: 'airplane' },
+  { id: 'other', label: 'Other', icon: 'cube' },
+];
+
+interface Receipt {
+  id: string;
+  merchant_name: string;
+  merchant_address: string;
+  transaction_date: string;
+  total_amount: number;
+  tax_amount: number;
+  currency: string;
+  filename: string;
+  created_at: string;
+  confidence_score: number;
+  status: string;
+  notes?: string;
+  category?: string;
+  image_path?: string;
+}
+
+const ReceiptsListScreen = () => {
+  const navigation = useNavigation();
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredReceipts, setFilteredReceipts] = useState<Receipt[]>([]);
+  const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [filters, setFilters] = useState<ReceiptFilters>(DEFAULT_FILTERS);
+  const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+
+  const [dateFromInput, setDateFromInput] = useState('');
+
+  const [dateToInput, setDateToInput] = useState('');
+  const [datePickerMode, setDatePickerMode] = useState<'from' | 'to' | null>(null);
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const filterCount = activeFilterCount(filters);
+
+  const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
+
+  const fetchReceipts = async () => {
+    try {
+      const params = new URLSearchParams(toQueryParams(filters)).toString();
+      const response = await fetch(`${API_URL}/receipts?${params}`);
+      const data = await response.json();
+      if (data.receipts) {
+        setReceipts(data.receipts);
+        filterReceipts(searchQuery, data.receipts);
+      }
+    } catch (error) {
+      console.error('Error fetching receipts:', error);
+      Alert.alert('Error', 'Failed to load receipts');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchReceipts();
+    }, [filters])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchReceipts();
+  };
+
+  const filterReceipts = (query: string, receiptData?: Receipt[]) => {
+    const data = receiptData || receipts;
+    let filtered = data;
+
+    if (query.trim() !== '') {
+      filtered = filtered.filter(
+        (receipt) =>
+          (receipt.merchant_name || '').toLowerCase().includes(query.toLowerCase()) ||
+          (receipt.merchant_address && receipt.merchant_address.toLowerCase().includes(query.toLowerCase()))
+      );
+    }
+
+    setFilteredReceipts(filtered);
+  };
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    filterReceipts(text);
+  };
+
+  const handleReceiptPress = (receipt: Receipt) => {
+    setSelectedReceipt(receipt);
+    setModalVisible(true);
+  };
+
+  const handleViewReceipt = (receipt: Receipt) => {
+    setModalVisible(false);
+    (navigation as any).navigate('ReceiptDetail', { receiptId: receipt.id });
+  };
+
+  const handleDeleteReceipt = async () => {
+    if (!selectedReceipt) return;
+
+    Alert.alert(
+      'Delete Receipt',
+      'Are you sure you want to delete this receipt?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await fetch(API_URL + '/receipts/' + selectedReceipt.id, {
+                method: 'DELETE',
+              });
+
+              if (response.ok) {
+                setModalVisible(false);
+                Alert.alert('Success', 'Receipt deleted!');
+                fetchReceipts();
+              } else {
+                Alert.alert('Error', 'Failed to delete receipt');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Network error');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const getConfidenceColor = (score: number) => {
+    if (score >= 0.8) return '#4CAF50';
+    if (score >= 0.6) return '#FF9800';
+    return '#F44336';
+  };
+
+  const getConfidenceText = (score: number) => {
+    if (score >= 0.8) return 'High';
+    if (score >= 0.6) return 'Medium';
+    return 'Low';
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatCurrency = (amount: number, currency: string) => {
+    return currency + ' ' + amount.toFixed(2);
+  };
+
+  const renderReceiptItem = ({ item }: { item: Receipt }) => (
+    <TouchableOpacity
+      style={styles.receiptCard}
+      onPress={() => handleReceiptPress(item)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.receiptHeader}>
+        <View style={styles.merchantContainer}>
+          {item.image_path && (
+            <Image source={{ uri: item.image_path && item.image_path.startsWith("data:image") ? item.image_path : API_URL + "/" + item.image_path }} style={styles.thumbnailImage} resizeMode="cover" />
+          )}
+          <View>
+            <Text style={styles.merchantName}>{item.merchant_name || 'Unknown Merchant'}</Text>
+            <Text style={styles.receiptDate}>{formatDate(item.transaction_date)}</Text>
+          </View>
+        </View>
+        <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(item.confidence_score || 0) + '20' }]}>
+          <Text style={[styles.confidenceText, { color: getConfidenceColor(item.confidence_score || 0) }]}>
+            {getConfidenceText(item.confidence_score || 0)}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.receiptFooter}>
+        <Text style={styles.receiptAmount}>
+          {formatCurrency(item.total_amount || 0, item.currency || '$')}
+        </Text>
+        {item.category && (
+          <View style={styles.categoryBadge}>
+            <Text style={styles.categoryText}>
+              {CATEGORIES.find(c => c.id === item.category)?.label || item.category}
+            </Text>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.loadingText}>Loading receipts...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#4CAF50', '#2196F3']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>My Receipts</Text>
+            <Text style={styles.headerSubtitle}>
+              {filteredReceipts.length} {filteredReceipts.length === 1 ? 'receipt' : 'receipts'}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <FilterPill count={filterCount} onPress={() => { setDateFromInput(filters.startDate || ''); setDateToInput(filters.endDate || ''); setFilterSheetVisible(true); }} />
+            <View style={styles.headerIcon}>
+              <Ionicons name="receipt" size={28} color="#fff" />
+            </View>
+          </View>
+        </View>
+      </LinearGradient>
+
+      <View style={styles.searchContainer}>
+        <Ionicons name="search-outline" size={20} color="#999" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search receipts..."
+          placeholderTextColor="#999"
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => handleSearch('')}>
+            <Ionicons name="close-circle" size={20} color="#999" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <FlatList
+        data={filteredReceipts}
+        renderItem={renderReceiptItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4CAF50" />}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="receipt-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyText}>No receipts found</Text>
+            <Text style={styles.emptySubtext}>
+              {searchQuery ? 'Try a different search' : 'Upload your first receipt from the Camera tab'}
+            </Text>
+          </View>
+        }
+      />
+
+      {/* <FloatingScanButton /> */}
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={filterSheetVisible}
+        onRequestClose={() => setFilterSheetVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%' }}>
+            <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={{ fontSize: 22, fontWeight: '700' }}>Filters</Text>
+                <Pressable onPress={() => setFilterSheetVisible(false)}>
+                  <Ionicons name="close" size={28} color="#333" />
+                </Pressable>
+              </View>
+
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Sort by</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {([
+                  { key: 'date_desc' as SortOption, label: 'Newest' },
+                  { key: 'date_asc' as SortOption, label: 'Oldest' },
+                  { key: 'amount_desc' as SortOption, label: 'Highest' },
+                  { key: 'amount_asc' as SortOption, label: 'Lowest' },
+                  { key: 'merchant_asc' as SortOption, label: 'A-Z' },
+                ]).map((s) => (
+                  <Pressable
+                    key={s.key}
+                    onPress={() => setFilters({ ...filters, sort: s.key })}
+                    style={[
+                      { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: '#f0f0f0' },
+                      filters.sort === s.key && { backgroundColor: '#111' },
+                    ]}
+                  >
+                    <Text style={{ color: filters.sort === s.key ? '#fff' : '#111', fontWeight: filters.sort === s.key ? '600' : '400' }}>{s.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Date range</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Pressable
+                  style={{ flex: 1, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#ddd', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                  onPress={() => setDatePickerMode(datePickerMode === 'from' ? null : 'from')}
+                >
+                  <Text style={{ color: dateFromInput ? '#111' : '#999', fontSize: 14 }}>{dateFromInput || 'From'}</Text>
+                  <Ionicons name="calendar-outline" size={16} color="#999" />
+                </Pressable>
+                <Pressable
+                  style={{ flex: 1, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#ddd', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                  onPress={() => setDatePickerMode(datePickerMode === 'to' ? null : 'to')}
+                >
+                  <Text style={{ color: dateToInput ? '#111' : '#999', fontSize: 14 }}>{dateToInput || 'To'}</Text>
+                  <Ionicons name="calendar-outline" size={16} color="#999" />
+                </Pressable>
+              </View>
+
+              {datePickerMode && (
+                <View style={{ marginTop: 12, borderWidth: 1, borderColor: '#ddd', borderRadius: 12, overflow: 'hidden' }}>
+                  <Calendar
+                    current={datePickerMode === 'from' ? (dateFromInput || undefined) : (dateToInput || undefined)}
+                    onDayPress={(day: any) => {
+                      if (datePickerMode === 'from') {
+                        setDateFromInput(day.dateString);
+                      } else {
+                        setDateToInput(day.dateString);
+                      }
+                      setDatePickerMode(null);
+                    }}
+                    markedDates={{
+                      ...(dateFromInput ? { [dateFromInput]: { selected: true, selectedColor: '#4CAF50' } } : {}),
+                      ...(dateToInput ? { [dateToInput]: { selected: true, selectedColor: '#4CAF50' } } : {}),
+                    }}
+                    theme={{
+                      selectedDayBackgroundColor: '#4CAF50',
+                      todayTextColor: '#4CAF50',
+                      arrowColor: '#4CAF50',
+                    }}
+                  />
+                  <Pressable
+                    onPress={() => setDatePickerMode(null)}
+                    style={{ padding: 12, alignItems: 'center', backgroundColor: '#f5f5f5' }}
+                  >
+                    <Text style={{ color: '#666', fontWeight: '600' }}>Cancel</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Category</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {CATEGORIES.map((c) => (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => setFilters({ ...filters, category: filters.category === c.id ? null : c.id })}
+                    style={[
+                      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: '#f0f0f0', gap: 4 },
+                      filters.category === c.id && { backgroundColor: '#111' },
+                    ]}
+                  >
+                    <Ionicons name={c.icon as any} size={14} color={filters.category === c.id ? '#fff' : '#111'} />
+                    <Text style={{ color: filters.category === c.id ? '#fff' : '#111', fontWeight: filters.category === c.id ? '600' : '400' }}>{c.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', marginTop: 16, marginBottom: 8 }}>Currency</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {CURRENCIES.map((cur) => (
+                  <Pressable
+                    key={cur}
+                    onPress={() => setFilters({ ...filters, currency: filters.currency === cur ? null : cur })}
+                    style={[
+                      { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: '#f0f0f0' },
+                      filters.currency === cur && { backgroundColor: '#111' },
+                    ]}
+                  >
+                    <Text style={{ color: filters.currency === cur ? '#fff' : '#111', fontWeight: filters.currency === cur ? '600' : '400' }}>{cur}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 32 }}>
+                <Pressable
+                  onPress={() => { setFilters(DEFAULT_FILTERS); setDateFromInput(''); setDateToInput(''); }}
+                  style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#f0f0f0', alignItems: 'center' }}
+                >
+                  <Text style={{ fontWeight: '600' }}>Reset</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setFilters({
+                      ...filters,
+                      startDate: dateFromInput.trim() || null,
+                      endDate: dateToInput.trim() || null,
+                    });
+                    setFilterSheetVisible(false);
+                  }}
+                  style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#111', alignItems: 'center' }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '600' }}>Apply</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Receipt Details</Text>
+              <View style={styles.modalHeaderActions}>
+                <TouchableOpacity onPress={handleDeleteReceipt} style={styles.deleteButton}>
+                  <Ionicons name="trash-outline" size={24} color="#F44336" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Ionicons name="close" size={28} color="#333" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            {selectedReceipt && (
+              <ScrollView style={styles.modalBody}>
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>Merchant</Text>
+                  <Text style={styles.modalValue}>{selectedReceipt.merchant_name || 'N/A'}</Text>
+                </View>
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>Date</Text>
+                  <Text style={styles.modalValue}>{formatDate(selectedReceipt.transaction_date)}</Text>
+                </View>
+                <View style={[styles.modalField, styles.modalTotalField]}>
+                  <Text style={styles.modalTotalLabel}>Total</Text>
+                  <Text style={styles.modalTotalValue}>
+                    {formatCurrency(selectedReceipt.total_amount || 0, selectedReceipt.currency || '$')}
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.viewReceiptButton} onPress={() => handleViewReceipt(selectedReceipt)}>
+                  <Text style={styles.viewReceiptButtonText}>View Full Receipt</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' },
+  loadingText: { marginTop: 12, fontSize: 16, color: '#666' },
+  header: { paddingTop: 48, paddingBottom: 20, paddingHorizontal: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  headerIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', margin: 12, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e0e0e0' },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, height: 44, fontSize: 16, color: '#333' },
+  listContainer: { padding: 12, paddingBottom: 20 },
+  receiptCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  receiptHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  merchantContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  thumbnailImage: { width: 44, height: 44, borderRadius: 8, marginRight: 8 },
+  merchantName: { fontSize: 16, fontWeight: '600', color: '#1A2332' },
+  receiptDate: { fontSize: 12, color: '#6B7A8F', marginTop: 2 },
+  confidenceBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, alignSelf: 'flex-start' },
+  confidenceText: { fontSize: 10, fontWeight: '600' },
+  receiptFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+  receiptAmount: { fontSize: 16, fontWeight: '700', color: '#1A2332' },
+  categoryBadge: { paddingHorizontal: 10, paddingVertical: 3, backgroundColor: '#E8F5E9', borderRadius: 12 },
+  categoryText: { fontSize: 11, color: '#4CAF50', fontWeight: '500' },
+  emptyContainer: { alignItems: 'center', paddingVertical: 60 },
+  emptyText: { fontSize: 18, fontWeight: '600', color: '#666', marginTop: 12 },
+  emptySubtext: { fontSize: 14, color: '#999', marginTop: 4, textAlign: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e0e0e0' },
+  modalHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+  deleteButton: { padding: 4 },
+  modalBody: { padding: 20 },
+  modalField: { marginBottom: 12 },
+  modalLabel: { fontSize: 12, fontWeight: '600', color: '#999', textTransform: 'uppercase' },
+  modalValue: { fontSize: 16, color: '#333', marginTop: 2 },
+  modalTotalField: { borderTopWidth: 1, borderTopColor: '#e0e0e0', paddingTop: 12, marginTop: 4, marginBottom: 16 },
+  modalTotalLabel: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+  modalTotalValue: { fontSize: 24, fontWeight: 'bold', color: '#4CAF50' },
+  viewReceiptButton: { backgroundColor: '#4CAF50', padding: 16, borderRadius: 10, alignItems: 'center', marginBottom: 20 },
+  viewReceiptButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+});
+
+export default ReceiptsListScreen;
+
+
+
+================================================================
+FILE: src\screens\ReceiptDetailScreen.tsx
+================================================================
+SIZE: 21292 bytes
+----
+// src/screens/ReceiptDetailScreen.tsx
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+  Image,
+  Alert,
+  TextInput,
+} from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
+
+interface Receipt {
+  id: string;
+  merchant_name: string | null;
+  merchant_address: string | null;
+  transaction_date: string | null;
+  subtotal: number;
+  tax_amount: number;
+  total_amount: number;
+  currency: string;
+  filename: string;
+  image_path: string | null;
+  created_at: string;
+  processed_at: string | null;
+  confidence_score: number;
+  status: string;
+  category: string | null;
+  line_items: string | string[] | null;
+  document_type: string | null;
+  notes: string | null;
+  error_message: string | null;
+}
+
+interface EditableFields {
+  merchant_name: string;
+  merchant_address: string;
+  transaction_date: string;
+  subtotal: string;
+  tax_amount: string;
+  total_amount: string;
+  currency: string;
+  category: string;
+}
+
+const ReceiptDetailScreen = () => {
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const { receiptId } = route.params || {};
+
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<EditableFields>({
+    merchant_name: '',
+    merchant_address: '',
+    transaction_date: '',
+    subtotal: '',
+    tax_amount: '',
+    total_amount: '',
+    currency: '',
+    category: '',
+  });
+
+  const fetchReceipt = useCallback(async () => {
+    if (!receiptId) {
+      setError('No receipt ID provided');
+      setLoading(false);
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/receipts/${receiptId}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const r: Receipt = data.receipt || data;
+      setReceipt(r);
+      setError(null);
+    } catch (e: any) {
+      console.error('Failed to fetch receipt:', e);
+      setError(e.message || 'Failed to load receipt');
+    } finally {
+      setLoading(false);
+    }
+  }, [receiptId]);
+
+  useEffect(() => {
+    fetchReceipt();
+  }, [fetchReceipt]);
+
+  const beginEdit = () => {
+    if (!receipt) return;
+    setDraft({
+      merchant_name: receipt.merchant_name || '',
+      merchant_address: receipt.merchant_address || '',
+      transaction_date: receipt.transaction_date || '',
+      subtotal: receipt.subtotal != null ? String(receipt.subtotal) : '',
+      tax_amount: receipt.tax_amount != null ? String(receipt.tax_amount) : '',
+      total_amount: receipt.total_amount != null ? String(receipt.total_amount) : '',
+      currency: receipt.currency || 'USD',
+      category: receipt.category || '',
+    });
+    setIsEditing(true);
+  };
+
+  const cancelEdit = () => setIsEditing(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const parseNum = (s: string) => (s.trim() === '' ? null : parseFloat(s));
+      const payload = {
+        merchant_name: draft.merchant_name || null,
+        merchant_address: draft.merchant_address || null,
+        transaction_date: draft.transaction_date || null,
+        subtotal: parseNum(draft.subtotal),
+        tax_amount: parseNum(draft.tax_amount),
+        total_amount: parseNum(draft.total_amount),
+        currency: draft.currency || 'USD',
+        category: draft.category || null,
+      };
+      const res = await fetch(`${API_URL}/receipts/${receiptId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errText.slice(0, 100)}`);
+      }
+      setIsEditing(false);
+      await fetchReceipt();
+      Alert.alert('Saved', 'Receipt updated successfully');
+    } catch (e: any) {
+      console.error('Save failed:', e);
+      Alert.alert('Error', e.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Receipt',
+      'Are you sure you want to delete this receipt?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await fetch(`${API_URL}/receipts/${receiptId}`, { method: 'DELETE' });
+              if (response.ok) {
+                Alert.alert('Deleted', 'Receipt deleted successfully');
+                navigation.goBack();
+              } else {
+                Alert.alert('Error', 'Failed to delete receipt');
+              }
+            } catch {
+              Alert.alert('Error', 'Network error');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRetry = async () => {
+    Alert.alert(
+      'Retry Processing',
+      'This will reset the receipt so you can re-upload the image. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Retry',
+          onPress: async () => {
+            setRetrying(true);
+            try {
+              const response = await fetch(`${API_URL}/receipts/${receiptId}/retry`, { method: 'POST' });
+              const data = await response.json();
+              if (response.ok && data.success) {
+                Alert.alert('Reset Complete', 'Return to the Batch tab and upload the image again.');
+                await fetchReceipt();
+              } else {
+                Alert.alert('Error', data.error || 'Retry failed');
+              }
+            } catch (e: any) {
+              Alert.alert('Error', e.message || 'Network error');
+            } finally {
+              setRetrying(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const formatDate = (s: string | null) => {
+    if (!s) return 'N/A';
+    try {
+      return new Date(s).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    } catch {
+      return s;
+    }
+  };
+
+  const formatCurrency = (amount: number | null, currency: string) => {
+    const a = amount ?? 0;
+    return `${currency || '$'} ${a.toFixed(2)}`;
+  };
+
+  const renderLineItems = (items: any) => {
+    if (!items) return null;
+    let parsed: any = items;
+    if (typeof items === 'string') {
+      try { parsed = JSON.parse(items); } catch { parsed = items; }
+    }
+    if (!Array.isArray(parsed)) {
+      return <Text style={styles.lineItems}>{String(parsed)}</Text>;
+    }
+    return parsed.map((item: any, i: number) => {
+      let label = '';
+      if (item && typeof item === 'object') {
+        label = String(item.description || item.name || item.item || '');
+        if (item.amount != null) {
+          label = label + ' - ' + String(item.amount);
+        }
+      } else {
+        label = String(item);
+      }
+      return <Text key={i} style={styles.lineItemRow}>{label}</Text>;
+    });
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.loadingText}>Loading receiptâ€¦</Text>
+      </View>
+    );
+  }
+
+  if (error || !receipt) {
+    return (
+      <View style={styles.centerContainer}>
+        <Ionicons name="alert-circle-outline" size={64} color="#F44336" />
+        <Text style={styles.errorText}>{error || 'Receipt not found'}</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const imageUri = receipt.image_path
+    ? receipt.image_path.startsWith('http')
+      ? receipt.image_path
+      : `${API_URL}/${receipt.image_path}`
+    : receipt.id
+      ? `${API_URL}/receipts/${receipt.id}/image`
+      : null;
+
+  const isFailed = receipt.status === 'failed';
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#4CAF50', '#2196F3']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backIcon}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{isEditing ? 'Edit Receipt' : 'Receipt Details'}</Text>
+          {isEditing ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={cancelEdit} style={styles.backIcon}>
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleSave} disabled={saving} style={styles.backIcon}>
+                {saving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="checkmark" size={24} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={beginEdit} style={styles.backIcon}>
+                <Ionicons name="create-outline" size={24} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDelete} style={styles.backIcon}>
+                <Ionicons name="trash-outline" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </LinearGradient>
+
+      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
+        {isFailed && (
+          <View style={styles.failedBanner}>
+            <Ionicons name="alert-circle" size={32} color="#F44336" />
+            <View style={styles.failedBannerText}>
+              <Text style={styles.failedBannerTitle}>Processing Failed</Text>
+              <Text style={styles.failedBannerMessage}>
+                {receipt.error_message || 'Something went wrong while reading this receipt.'}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {imageUri && (
+          <View style={styles.imageContainer}>
+            <Image source={{ uri: imageUri }} style={styles.receiptImage} resizeMode="contain" />
+          </View>
+        )}
+
+        <View style={styles.card}>
+          {isEditing ? (
+            <>
+              <TextInput
+                style={[styles.editInput, styles.editInputLarge]}
+                value={draft.merchant_name}
+                onChangeText={(v) => setDraft({ ...draft, merchant_name: v })}
+                placeholder="Merchant name"
+                placeholderTextColor="#999"
+              />
+              <TextInput
+                style={styles.editInput}
+                value={draft.merchant_address}
+                onChangeText={(v) => setDraft({ ...draft, merchant_address: v })}
+                placeholder="Address"
+                placeholderTextColor="#999"
+              />
+              <TextInput
+                style={styles.editInput}
+                value={draft.transaction_date}
+                onChangeText={(v) => setDraft({ ...draft, transaction_date: v })}
+                placeholder="Date (YYYY-MM-DD)"
+                placeholderTextColor="#999"
+              />
+            </>
+          ) : (
+            <>
+              <Text style={styles.merchant}>{receipt.merchant_name || 'Unknown Merchant'}</Text>
+              {receipt.merchant_address ? (
+                <Text style={styles.address}>{receipt.merchant_address}</Text>
+              ) : null}
+              <Text style={styles.date}>{formatDate(receipt.transaction_date)}</Text>
+            </>
+          )}
+        </View>
+
+        {!isFailed && (
+          <View style={styles.card}>
+            {isEditing ? (
+              <>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Subtotal</Text>
+                  <TextInput
+                    style={styles.editInputRight}
+                    value={draft.subtotal}
+                    onChangeText={(v) => setDraft({ ...draft, subtotal: v })}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                  />
+                </View>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Tax</Text>
+                  <TextInput
+                    style={styles.editInputRight}
+                    value={draft.tax_amount}
+                    onChangeText={(v) => setDraft({ ...draft, tax_amount: v })}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                  />
+                </View>
+                <View style={[styles.field, styles.totalField]}>
+                  <Text style={styles.totalLabel}>Total</Text>
+                  <TextInput
+                    style={[styles.editInputRight, styles.editInputLarge]}
+                    value={draft.total_amount}
+                    onChangeText={(v) => setDraft({ ...draft, total_amount: v })}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                  />
+                </View>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Currency</Text>
+                  <TextInput
+                    style={styles.editInputRight}
+                    value={draft.currency}
+                    onChangeText={(v) => setDraft({ ...draft, currency: v })}
+                    placeholder="USD"
+                  />
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Subtotal</Text>
+                  <Text style={styles.fieldValue}>{formatCurrency(receipt.subtotal, receipt.currency)}</Text>
+                </View>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Tax</Text>
+                  <Text style={styles.fieldValue}>{formatCurrency(receipt.tax_amount, receipt.currency)}</Text>
+                </View>
+                <View style={[styles.field, styles.totalField]}>
+                  <Text style={styles.totalLabel}>Total</Text>
+                  <Text style={styles.totalValue}>{formatCurrency(receipt.total_amount, receipt.currency)}</Text>
+                </View>
+              </>
+            )}
+          </View>
+        )}
+
+        {!isFailed && receipt.line_items ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Items</Text>
+            {renderLineItems(receipt.line_items)}
+          </View>
+        ) : null}
+
+        <View style={styles.card}>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Status</Text>
+            <Text style={[styles.fieldValue, styles.statusText]}>{receipt.status}</Text>
+          </View>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Confidence</Text>
+            <Text style={styles.fieldValue}>{Math.round((receipt.confidence_score || 0) * 100)}%</Text>
+          </View>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>File</Text>
+            <Text style={styles.fieldValue} numberOfLines={1}>{receipt.filename || 'N/A'}</Text>
+          </View>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Uploaded</Text>
+            <Text style={styles.fieldValue}>{formatDate(receipt.created_at)}</Text>
+          </View>
+          {isEditing ? (
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Category</Text>
+              <TextInput
+                style={styles.editInputRight}
+                value={draft.category}
+                onChangeText={(v) => setDraft({ ...draft, category: v })}
+                placeholder="Category"
+              />
+            </View>
+          ) : receipt.category ? (
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Category</Text>
+              <Text style={styles.fieldValue}>{receipt.category}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {isFailed && (
+          <TouchableOpacity style={styles.retryButton} onPress={handleRetry} disabled={retrying}>
+            {retrying ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="refresh" size={20} color="#fff" />
+                <Text style={styles.retryButtonText}>Retry Processing</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#f5f5f5' },
+  loadingText: { marginTop: 12, fontSize: 16, color: '#666' },
+  errorText: { marginTop: 12, fontSize: 16, color: '#F44336', textAlign: 'center' },
+  backButton: { marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#4CAF50', borderRadius: 8 },
+  backButtonText: { color: '#fff', fontWeight: '600' },
+  header: { paddingTop: 48, paddingBottom: 20, paddingHorizontal: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
+  backIcon: { padding: 4, width: 32 },
+  body: { flex: 1 },
+  bodyContent: { padding: 16, paddingBottom: 40 },
+  failedBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFEBEE', borderRadius: 12, padding: 16, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#F44336' },
+  failedBannerText: { flex: 1, marginLeft: 12 },
+  failedBannerTitle: { fontSize: 16, fontWeight: 'bold', color: '#C62828' },
+  failedBannerMessage: { fontSize: 13, color: '#B71C1C', marginTop: 4 },
+  imageContainer: { backgroundColor: '#fff', borderRadius: 12, padding: 8, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  receiptImage: { width: '100%', height: 400, borderRadius: 8 },
+  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  merchant: { fontSize: 22, fontWeight: 'bold', color: '#1A2332' },
+  address: { fontSize: 14, color: '#6B7A8F', marginTop: 4 },
+  date: { fontSize: 14, color: '#6B7A8F', marginTop: 8 },
+  field: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  fieldLabel: { fontSize: 14, color: '#6B7A8F' },
+  fieldValue: { fontSize: 14, color: '#1A2332', fontWeight: '500', flex: 1, textAlign: 'right' },
+  totalField: { borderBottomWidth: 0, marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#e0e0e0' },
+  totalLabel: { fontSize: 18, fontWeight: 'bold', color: '#1A2332' },
+  totalValue: { fontSize: 22, fontWeight: 'bold', color: '#4CAF50' },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#1A2332', marginBottom: 8 },
+  lineItems: { fontSize: 14, color: '#333', lineHeight: 20 },
+  lineItemRow: { fontSize: 14, color: '#333', lineHeight: 22 },
+  statusText: { textTransform: 'capitalize' },
+  editInput: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, fontSize: 15, backgroundColor: '#fafafa', marginBottom: 8 },
+  editInputLarge: { fontSize: 18, fontWeight: '600' },
+  editInputRight: { flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 8, fontSize: 14, backgroundColor: '#fafafa', textAlign: 'right', marginLeft: 12 },
+  retryButton: { flexDirection: 'row', backgroundColor: '#F44336', padding: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+  retryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+});
+
+export default ReceiptDetailScreen;
+
+
+================================================================
+FILE: src\screens\SubscriptionScreen.tsx
+================================================================
+SIZE: 6253 bytes
+----
+// src/screens/SubscriptionScreen.tsx
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const SubscriptionScreen = () => {
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+  const plans = [
+    {
+      id: 'free',
+      name: 'Free',
+      price: '$0',
+      period: '/month',
+      features: ['10 receipts/month', 'Basic OCR', '24/7 support'],
+      color: '#4CAF50',
+      icon: 'leaf-outline',
+    },
+    {
+      id: 'pro',
+      name: 'Pro',
+      price: '$9.99',
+      period: '/month',
+      features: ['Unlimited receipts', 'Advanced AI', 'Export to CSV/PDF', 'Priority support'],
+      color: '#2196F3',
+      icon: 'star-outline',
+      popular: true,
+    },
+    {
+      id: 'business',
+      name: 'Business',
+      price: '$29.99',
+      period: '/month',
+      features: ['Everything in Pro', 'Team sharing', 'API access', 'Custom reports'],
+      color: '#9C27B0',
+      icon: 'briefcase-outline',
+    },
+  ];
+
+  const handleSubscribe = (planId: string) => {
+    setSelectedPlan(planId);
+    Alert.alert(
+      'Subscribe',
+      `You selected the ${plans.find(p => p.id === planId)?.name} plan.`,
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => setSelectedPlan(null) },
+        { text: 'Confirm', onPress: () => Alert.alert('Success', 'Subscription activated!') },
+      ]
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#4CAF50', '#2196F3']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>Subscription</Text>
+            <Text style={styles.headerSubtitle}>Choose your plan</Text>
+          </View>
+          <View style={styles.headerIcon}>
+            <Ionicons name="star" size={28} color="#fff" />
+          </View>
+        </View>
+      </LinearGradient>
+
+      <ScrollView style={styles.content}>
+        {plans.map((plan) => (
+          <TouchableOpacity
+            key={plan.id}
+            style={[
+              styles.planCard,
+              selectedPlan === plan.id && styles.planCardSelected,
+              plan.popular && styles.planCardPopular,
+            ]}
+            onPress={() => handleSubscribe(plan.id)}
+            activeOpacity={0.7}
+          >
+            {plan.popular && (
+              <View style={styles.popularBadge}>
+                <Text style={styles.popularText}>Most Popular</Text>
+              </View>
+            )}
+            <View style={styles.planHeader}>
+              <View style={[styles.planIcon, { backgroundColor: plan.color + '20' }]}>
+                <Ionicons name={plan.icon as any} size={24} color={plan.color} />
+              </View>
+              <View>
+                <Text style={styles.planName}>{plan.name}</Text>
+                <View style={styles.planPriceContainer}>
+                  <Text style={[styles.planPrice, { color: plan.color }]}>{plan.price}</Text>
+                  <Text style={styles.planPeriod}>{plan.period}</Text>
+                </View>
+              </View>
+            </View>
+            <View style={styles.planFeatures}>
+              {plan.features.map((feature, index) => (
+                <View key={index} style={styles.featureItem}>
+                  <Ionicons name="checkmark-circle" size={20} color={plan.color} />
+                  <Text style={styles.featureText}>{feature}</Text>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={[styles.subscribeButton, { backgroundColor: plan.color }]}
+              onPress={() => handleSubscribe(plan.id)}
+            >
+              <Text style={styles.subscribeButtonText}>
+                {selectedPlan === plan.id ? 'Selected' : 'Subscribe'}
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  header: { paddingTop: 48, paddingBottom: 20, paddingHorizontal: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  headerIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  content: { flex: 1, padding: 16 },
+  planCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: 'transparent' },
+  planCardSelected: { borderColor: '#4CAF50', borderWidth: 2 },
+  planCardPopular: { borderColor: '#2196F3', borderWidth: 2 },
+  popularBadge: { position: 'absolute', top: -1, right: 16, backgroundColor: '#2196F3', paddingHorizontal: 12, paddingVertical: 4, borderTopLeftRadius: 8, borderTopRightRadius: 8 },
+  popularText: { color: '#fff', fontSize: 10, fontWeight: '600' },
+  planHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  planIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  planName: { fontSize: 18, fontWeight: '600', color: '#333' },
+  planPriceContainer: { flexDirection: 'row', alignItems: 'baseline' },
+  planPrice: { fontSize: 22, fontWeight: 'bold' },
+  planPeriod: { fontSize: 14, color: '#999', marginLeft: 2 },
+  planFeatures: { marginVertical: 12, gap: 6 },
+  featureItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  featureText: { fontSize: 14, color: '#555' },
+  subscribeButton: { padding: 12, borderRadius: 10, alignItems: 'center', marginTop: 8 },
+  subscribeButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+});
+
+export default SubscriptionScreen;
+
+
+================================================================
+FILE: src\screens\ProfileScreen.tsx
+================================================================
+SIZE: 8885 bytes
+----
+// src/screens/ProfileScreen.tsx
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  Switch,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const ProfileScreen = () => {
+  const navigation = useNavigation();
+  const [notifications, setNotifications] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign Out', style: 'destructive', onPress: () => {
+          // Sign out logic here
+          Alert.alert('Signed Out', 'You have been signed out successfully.');
+        }}
+      ]
+    );
+  };
+
+  const menuItems = [
+    { icon: 'person-outline', label: 'Account Settings', color: '#4CAF50' },
+    { icon: 'receipt-outline', label: 'My Receipts', color: '#2196F3' },
+    { icon: 'stats-chart-outline', label: 'Reports', color: '#FF9800' },
+    { icon: 'download-outline', label: 'Export Data', color: '#9C27B0' },
+    { icon: 'star-outline', label: 'Subscription', color: '#FFC107' },
+    { icon: 'help-circle-outline', label: 'Help & Support', color: '#607D8B' },
+    { icon: 'information-circle-outline', label: 'About', color: '#795548' },
+  ];
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <LinearGradient
+        colors={['#4CAF50', '#2196F3']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.profileIcon}>
+            <Ionicons name="person" size={48} color="#fff" />
+          </View>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>John Doe</Text>
+            <Text style={styles.headerSubtitle}>john.doe@email.com</Text>
+          </View>
+        </View>
+        <View style={styles.headerStats}>
+          <View style={styles.headerStatItem}>
+            <Text style={styles.headerStatValue}>24</Text>
+            <Text style={styles.headerStatLabel}>Receipts</Text>
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.headerStatItem}>
+            <Text style={styles.headerStatValue}>,247</Text>
+            <Text style={styles.headerStatLabel}>Total Spent</Text>
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.headerStatItem}>
+            <Text style={styles.headerStatValue}>92%</Text>
+            <Text style={styles.headerStatLabel}>Confidence</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Menu Items */}
+      <ScrollView style={styles.menuContainer}>
+        {menuItems.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.menuItem}
+            onPress={() => {
+              if (item.label === 'My Receipts') {
+                navigation.navigate('Receipts' as never);
+              } else if (item.label === 'Reports') {
+                navigation.navigate('Reports' as never);
+              } else if (item.label === 'Export Data') {
+                navigation.navigate('Export' as never);
+              } else if (item.label === 'Subscription') {
+                navigation.navigate('Subscription' as never);
+              } else {
+                Alert.alert(item.label, 'Feature coming soon!');
+              }
+            }}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIcon, { backgroundColor: item.color + '20' }]}>
+                <Ionicons name={item.icon as any} size={22} color={item.color} />
+              </View>
+              <Text style={styles.menuLabel}>{item.label}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+        ))}
+
+        {/* Settings Section */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.settingsTitle}>Settings</Text>
+          <View style={styles.settingsItem}>
+            <View style={styles.settingsItemLeft}>
+              <Ionicons name="notifications-outline" size={22} color="#666" />
+              <Text style={styles.settingsLabel}>Notifications</Text>
+            </View>
+            <Switch
+              value={notifications}
+              onValueChange={setNotifications}
+              trackColor={{ false: '#ccc', true: '#4CAF50' }}
+              thumbColor={notifications ? '#fff' : '#f4f3f4'}
+            />
+          </View>
+          <View style={styles.settingsItem}>
+            <View style={styles.settingsItemLeft}>
+              <Ionicons name="moon-outline" size={22} color="#666" />
+              <Text style={styles.settingsLabel}>Dark Mode</Text>
+            </View>
+            <Switch
+              value={darkMode}
+              onValueChange={setDarkMode}
+              trackColor={{ false: '#ccc', true: '#4CAF50' }}
+              thumbColor={darkMode ? '#fff' : '#f4f3f4'}
+            />
+          </View>
+        </View>
+
+        {/* Sign Out Button */}
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <Ionicons name="log-out-outline" size={22} color="#F44336" />
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>ReadReceipts v1.0.0</Text>
+        </View>
+      </ScrollView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    paddingTop: 48,
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  headerText: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  headerStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.15)',
+  },
+  headerStatItem: {
+    alignItems: 'center',
+  },
+  headerStatValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerStatLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+  },
+  headerDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  menuContainer: {
+    flex: 1,
+    padding: 16,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  menuLabel: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  settingsSection: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  settingsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  settingsItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  settingsItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingsLabel: {
+    fontSize: 15,
+    color: '#333',
+    marginLeft: 12,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
+  },
+  signOutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F44336',
+    marginLeft: 8,
+  },
+  footer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#999',
+  },
+});
+
+export default ProfileScreen;
+
+
+
+================================================================
+FILE: src\screens\ExportScreen.tsx
+================================================================
+SIZE: 13110 bytes
+----
+// src/screens/ExportScreen.tsx
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+} from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+
+interface Receipt {
+  id: string;
+  merchant_name: string;
+  merchant_address: string;
+  transaction_date: string;
+  total_amount: number;
+  tax_amount: number;
+  currency: string;
+  filename: string;
+  created_at: string;
+  confidence_score: number;
+  status: string;
+  document_type?: string;
+  document_number?: string;
+  client_name?: string;
+  due_date?: string;
+  tax_type?: string;
+  tax_year?: string;
+  income_amount?: number;
+  expense_amount?: number;
+  tax_amount_paid?: number;
+  category?: string;
+  notes?: string;
+}
+
+const ExportScreen = () => {
+  const navigation = useNavigation();
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [selectedFormat, setSelectedFormat] = useState<'csv' | 'json'>('csv');
+
+  const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
+
+  const fetchReceipts = async () => {
+    try {
+      const response = await fetch(API_URL + '/receipts');
+      const data = await response.json();
+      if (data.receipts) {
+        setReceipts(data.receipts);
+      }
+    } catch (error) {
+      console.error('Error fetching receipts:', error);
+      Alert.alert('Error', 'Failed to load receipts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchReceipts();
+    }, [])
+  );
+
+  const generateCSV = (): string => {
+    let csv = 'Merchant,Address,Date,Total,Tax,Currency,Document Type,Document #,Client Name,Due Date,Tax Type,Tax Year,Income,Expense,Tax Paid,Category,Confidence,Status,File,Notes\n';
+    
+    receipts.forEach((receipt) => {
+      const merchant = (receipt.merchant_name || 'Unknown').replace(/,/g, ';');
+      const address = (receipt.merchant_address || '').replace(/,/g, ';');
+      const date = receipt.transaction_date || 'N/A';
+      const total = receipt.total_amount || 0;
+      const tax = receipt.tax_amount || 0;
+      const currency = receipt.currency || '$';
+      const docType = receipt.document_type || 'expense';
+      const docNumber = (receipt.document_number || '').replace(/,/g, ';');
+      const clientName = (receipt.client_name || '').replace(/,/g, ';');
+      const dueDate = receipt.due_date || 'N/A';
+      const taxType = receipt.tax_type || '';
+      const taxYear = receipt.tax_year || '';
+      const income = receipt.income_amount || 0;
+      const expense = receipt.expense_amount || 0;
+      const taxPaid = receipt.tax_amount_paid || 0;
+      const category = (receipt.category || 'Uncategorized').replace(/,/g, ';');
+      const confidence = Math.round((receipt.confidence_score || 0) * 100) + '%';
+      const status = receipt.status || 'processed';
+      const filename = receipt.filename || 'receipt.jpg';
+      const notes = (receipt.notes || '').replace(/,/g, ';');
+      
+      csv += merchant + ',' + address + ',' + date + ',' + total + ',' + tax + ',' + currency + ',' + docType + ',' + docNumber + ',' + clientName + ',' + dueDate + ',' + taxType + ',' + taxYear + ',' + income + ',' + expense + ',' + taxPaid + ',' + category + ',' + confidence + ',' + status + ',' + filename + ',' + notes + '\n';
+    });
+    
+    return csv;
+  };
+
+  const generateJSON = (): string => {
+    const jsonData = receipts.map((receipt) => ({
+      merchant: receipt.merchant_name || 'Unknown',
+      address: receipt.merchant_address || '',
+      date: receipt.transaction_date || 'N/A',
+      total: receipt.total_amount || 0,
+      tax: receipt.tax_amount || 0,
+      currency: receipt.currency || '$',
+      document_type: receipt.document_type || 'expense',
+      document_number: receipt.document_number || '',
+      client_name: receipt.client_name || '',
+      due_date: receipt.due_date || 'N/A',
+      tax_type: receipt.tax_type || '',
+      tax_year: receipt.tax_year || '',
+      income_amount: receipt.income_amount || 0,
+      expense_amount: receipt.expense_amount || 0,
+      tax_amount_paid: receipt.tax_amount_paid || 0,
+      category: receipt.category || 'Uncategorized',
+      confidence: Math.round((receipt.confidence_score || 0) * 100) + '%',
+      status: receipt.status || 'processed',
+      filename: receipt.filename || 'receipt.jpg',
+      notes: receipt.notes || '',
+      id: receipt.id,
+    }));
+    return JSON.stringify(jsonData, null, 2);
+  };
+
+  const handleExport = async () => {
+    if (receipts.length === 0) {
+      Alert.alert('No Receipts', 'You have no receipts to export.');
+      return;
+    }
+
+    setExporting(true);
+
+    try {
+      const fileName = 'receipts_export_' + new Date().toISOString().slice(0, 10);
+      let fileContent: string;
+      let mimeType: string;
+      let fileExtension: string;
+
+      if (selectedFormat === 'csv') {
+        fileContent = generateCSV();
+        mimeType = 'text/csv';
+        fileExtension = '.csv';
+      } else {
+        fileContent = generateJSON();
+        mimeType = 'application/json';
+        fileExtension = '.json';
+      }
+
+      // ✅ New File API
+      const file = new File(Paths.cache, fileName + fileExtension);
+      file.create({ overwrite: true });
+      file.write(fileContent);
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: mimeType,
+          dialogTitle: 'Export Receipts',
+        });
+      } else {
+        Alert.alert('Share not available', 'Sharing is not available on this device.');
+      }
+
+      setExporting(false);
+    } catch (error: any) {
+      console.error('Export error:', error);
+      Alert.alert('Export Error', error.message || 'Failed to export receipts.');
+      setExporting(false);
+    }
+  };
+
+  const getTotalAmount = (): number => {
+    return receipts.reduce((sum, r) => sum + (r.total_amount || 0), 0);
+  };
+
+  const getAverageConfidence = (): number => {
+    if (receipts.length === 0) return 0;
+    const sum = receipts.reduce((sum, r) => sum + (r.confidence_score || 0), 0);
+    return Math.round((sum / receipts.length) * 100);
+  };
+
+  const getTypeCount = (type: string): number => {
+    return receipts.filter(r => r.document_type === type).length;
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.loadingText}>Loading receipts...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Export Receipts</Text>
+        <Text style={styles.subtitle}>
+          Export your receipt data for accounting or analysis
+        </Text>
+      </View>
+
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{receipts.length}</Text>
+          <Text style={styles.statLabel}>Total</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{getTypeCount('expense')}</Text>
+          <Text style={styles.statLabel}>Expenses</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{getTypeCount('invoice')}</Text>
+          <Text style={styles.statLabel}>Income</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{getTypeCount('tax')}</Text>
+          <Text style={styles.statLabel}>Tax</Text>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Export Format</Text>
+        <View style={styles.formatContainer}>
+          <TouchableOpacity
+            style={[
+              styles.formatButton,
+              selectedFormat === 'csv' && styles.formatButtonActive,
+            ]}
+            onPress={() => setSelectedFormat('csv')}
+          >
+            <Ionicons 
+              name="document-text-outline" 
+              size={24} 
+              color={selectedFormat === 'csv' ? '#fff' : '#666'} 
+            />
+            <Text style={[
+              styles.formatButtonText,
+              selectedFormat === 'csv' && styles.formatButtonTextActive,
+            ]}>
+              CSV
+            </Text>
+            <Text style={[
+              styles.formatButtonSubtext,
+              selectedFormat === 'csv' && styles.formatButtonTextActive,
+            ]}>
+              Excel compatible
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.formatButton,
+              selectedFormat === 'json' && styles.formatButtonActive,
+            ]}
+            onPress={() => setSelectedFormat('json')}
+          >
+            <Ionicons 
+              name="code-outline" 
+              size={24} 
+              color={selectedFormat === 'json' ? '#fff' : '#666'} 
+            />
+            <Text style={[
+              styles.formatButtonText,
+              selectedFormat === 'json' && styles.formatButtonTextActive,
+            ]}>
+              JSON
+            </Text>
+            <Text style={[
+              styles.formatButtonSubtext,
+              selectedFormat === 'json' && styles.formatButtonTextActive,
+            ]}>
+              Developer friendly
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.exportButton, receipts.length === 0 && styles.exportButtonDisabled]}
+        onPress={handleExport}
+        disabled={receipts.length === 0 || exporting}
+      >
+        {exporting ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <View style={styles.exportButtonContent}>
+            <Ionicons name="download-outline" size={24} color="#fff" />
+            <Text style={styles.exportButtonText}>
+              Export as {selectedFormat.toUpperCase()}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>
+          {receipts.length} receipt{receipts.length !== 1 ? 's' : ''} will be exported
+        </Text>
+      </View>
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+  },
+  header: {
+    backgroundColor: '#fff',
+    padding: 20,
+    paddingTop: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  section: {
+    margin: 12,
+    marginTop: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  formatContainer: {
+    flexDirection: 'row',
+  },
+  formatButton: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    marginHorizontal: 4,
+  },
+  formatButtonActive: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#4CAF50',
+  },
+  formatButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 4,
+  },
+  formatButtonTextActive: {
+    color: '#fff',
+  },
+  formatButtonSubtext: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  exportButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 12,
+    padding: 18,
+    margin: 12,
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  exportButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exportButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  exportButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  footer: {
+    alignItems: 'center',
+    paddingBottom: 30,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#999',
+  },
+});
+
+export default ExportScreen;
+
+
+
+================================================================
+FILE: src\screens\ReportsScreen.tsx
+================================================================
+SIZE: 26598 bytes
+----
+// src/screens/ReportsScreen.tsx
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  Dimensions,
+  Animated,
+} from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { Ionicons } from "@expo/vector-icons";
+import FloatingScanButton from "../components/FloatingScanButton";
+import { LinearGradient } from 'expo-linear-gradient';
+import { BarChart, PieChart } from 'react-native-chart-kit';
+// import { useAuth } from '../context/AuthContext'; // DISABLED FOR DEMO
+
+const { width } = Dimensions.get('window');
+
+// FadeIn component using built-in Animated
+const FadeInView = (props: any) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[props.style, {
+        opacity: fadeAnim,
+        transform: [{ scale: scaleAnim }],
+      }]}
+    >
+      {props.children}
+    </Animated.View>
+  );
+};
+
+// Staggered card component
+const StaggeredCard = (props: any) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 400,
+        delay: props.index * 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 400,
+        delay: props.index * 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={{
+        opacity: opacity,
+        transform: [{ translateY: translateY }],
+        flex: 1,
+        minWidth: '30%',
+      }}
+    >
+      {props.children}
+    </Animated.View>
+  );
+};
+
+interface FinancialData {
+  income: number;
+  expenses: number;
+  taxes: number;
+  netProfit: number;
+  receiptCount: number;
+  monthlyData: {
+    month: string;
+    income: number;
+    expenses: number;
+  }[];
+  taxBreakdown: {
+    type: string;
+    amount: number;
+  }[];
+  categoryBreakdown: {
+    name: string;
+    amount: number;
+    color: string;
+  }[];
+  trends: {
+    revenue: number;
+    expenses: number;
+    net: number;
+  };
+  topMerchants: {
+    name: string;
+    amount: number;
+  }[];
+}
+
+const ReportsScreen = () => {
+  const navigation = useNavigation();
+  // const { user } = useAuth(); // DISABLED FOR DEMO
+  const user = { email: 'demo@readreceipts.com' };
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [data, setData] = useState<FinancialData | null>(null);
+  const [showContent, setShowContent] = useState(false);
+  
+  const API_URL = 'https://readreceipts-api-sxyz.onrender.com';
+
+  useEffect(() => {
+    if (data && !loading) {
+      setTimeout(() => setShowContent(true), 150);
+    }
+  }, [data, loading]);
+
+  const fetchReport = async () => {
+    setLoading(true);
+    setShowContent(false);
+    try {
+      const response = await fetch(API_URL + '/receipts');
+      const result = await response.json();
+      
+      if (result.receipts) {
+        const processed = processReceiptData(result.receipts);
+        setData(processed);
+      }
+    } catch (error) {
+      console.error('Error fetching report:', error);
+      Alert.alert('Error', 'Failed to generate report');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const processReceiptData = (receipts: any[]): FinancialData => {
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    let totalTaxes = 0;
+    const monthlyMap: { [key: string]: { income: number; expenses: number } } = {};
+    const taxMap: { [key: string]: number } = {};
+    const categoryMap: { [key: string]: number } = {};
+    const merchantMap: { [key: string]: number } = {};
+    
+    const colors = ['#4CAF50', '#2196F3', '#FF9800', '#F44336', '#9E9E9E', '#9C27B0', '#00BCD4', '#FF5722'];
+
+    receipts.forEach((receipt: any) => {
+      const amount = receipt.total_amount || 0;
+      const tax = receipt.total_tax_amount || 0;
+      const category = receipt.category || 'Uncategorized';
+      const merchant = receipt.supplier_name || 'Unknown';
+      
+      const isIncome = ['income', 'salary', 'payment', 'refund'].includes(category.toLowerCase());
+      
+      if (isIncome) {
+        totalIncome += amount;
+      } else {
+        totalExpenses += amount;
+      }
+      
+      totalTaxes += tax;
+      
+      if (receipt.receipt_date) {
+        const date = new Date(receipt.receipt_date);
+        const monthKey = date.toLocaleString('default', { month: 'short' });
+        
+        if (!monthlyMap[monthKey]) {
+          monthlyMap[monthKey] = { income: 0, expenses: 0 };
+        }
+        
+        if (isIncome) {
+          monthlyMap[monthKey].income += amount;
+        } else {
+          monthlyMap[monthKey].expenses += amount;
+        }
+      }
+      
+      if (tax > 0) {
+        const taxType = receipt.tax_type || 'Sales Tax';
+        taxMap[taxType] = (taxMap[taxType] || 0) + tax;
+      }
+      
+      categoryMap[category] = (categoryMap[category] || 0) + amount;
+      merchantMap[merchant] = (merchantMap[merchant] || 0) + amount;
+    });
+
+    const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyData = Object.keys(monthlyMap)
+      .sort((a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b))
+      .map((month) => ({
+        month,
+        income: monthlyMap[month].income,
+        expenses: monthlyMap[month].expenses,
+      }));
+
+    const taxBreakdown = Object.keys(taxMap).map((type) => ({
+      type,
+      amount: taxMap[type],
+    }));
+
+    const categoryBreakdown = Object.keys(categoryMap)
+      .sort((a, b) => categoryMap[b] - categoryMap[a])
+      .slice(0, 6)
+      .map((name, index) => ({
+        name,
+        amount: categoryMap[name],
+        color: colors[index % colors.length],
+      }));
+
+    const topMerchants = Object.keys(merchantMap)
+      .sort((a, b) => merchantMap[b] - merchantMap[a])
+      .slice(0, 5)
+      .map((name) => ({
+        name,
+        amount: merchantMap[name],
+      }));
+
+    const trends = {
+      revenue: monthlyData.length > 1 ? 
+        ((monthlyData[monthlyData.length - 1].income - monthlyData[monthlyData.length - 2].income) / 
+         (monthlyData[monthlyData.length - 2].income || 1) * 100) : 0,
+      expenses: monthlyData.length > 1 ?
+        ((monthlyData[monthlyData.length - 1].expenses - monthlyData[monthlyData.length - 2].expenses) /
+         (monthlyData[monthlyData.length - 2].expenses || 1) * 100) : 0,
+      net: monthlyData.length > 1 ?
+        (((monthlyData[monthlyData.length - 1].income - monthlyData[monthlyData.length - 1].expenses) -
+          (monthlyData[monthlyData.length - 2].income - monthlyData[monthlyData.length - 2].expenses)) /
+         ((monthlyData[monthlyData.length - 2].income - monthlyData[monthlyData.length - 2].expenses) || 1) * 100) : 0,
+    };
+
+    return {
+      income: totalIncome,
+      expenses: totalExpenses,
+      taxes: totalTaxes,
+      netProfit: totalIncome - totalExpenses,
+      receiptCount: receipts.length,
+      monthlyData,
+      taxBreakdown,
+      categoryBreakdown,
+      trends,
+      topMerchants,
+    };
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchReport();
+    }, [])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchReport();
+  };
+
+  const formatCurrency = (amount: number) => {
+    return '$' + amount.toFixed(2);
+  };
+
+  const getTrendIcon = (value: number) => {
+    if (value > 0) return 'arrow-up-circle';
+    if (value < 0) return 'arrow-down-circle';
+    return 'remove-circle';
+  };
+
+  const getTrendColor = (value: number) => {
+    if (value > 0) return '#4CAF50';
+    if (value < 0) return '#F44336';
+    return '#FF9800';
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.loadingText}>Generating report...</Text>
+      </View>
+    );
+  }
+
+  if (!data || data.receiptCount === 0) {
+    return (
+      <ScrollView style={styles.container}>
+        <LinearGradient
+          colors={['#4CAF50', '#2196F3']}
+          style={styles.header}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.headerTitle}>Reports</Text>
+              <Text style={styles.headerSubtitle}>Financial insights</Text>
+            </View>
+            <View style={styles.headerIcon}>
+              <Ionicons name="stats-chart" size={28} color="#fff" />
+            </View>
+          </View>
+        </LinearGradient>
+        
+        <View style={styles.emptyContainer}>
+          <Ionicons name="receipt-outline" size={64} color="#ccc" />
+          <Text style={styles.emptyText}>No receipts yet</Text>
+          <Text style={styles.emptySubtext}>Upload receipts to see insights</Text>
+          <TouchableOpacity 
+            style={styles.scanButton} 
+            onPress={() => navigation.navigate('Scan' as never)}
+          >
+            <Ionicons name="camera" size={20} color="#fff" />
+            <Text style={styles.scanButtonText}>Scan a Receipt</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  const barChartData = {
+    labels: data.monthlyData.map((d) => d.month),
+    datasets: [
+      {
+        data: data.monthlyData.map((d) => d.income),
+        color: (opacity = 1) => 'rgba(76, 175, 80, ' + opacity + ')',
+      },
+      {
+        data: data.monthlyData.map((d) => d.expenses),
+        color: (opacity = 1) => 'rgba(244, 67, 54, ' + opacity + ')',
+      },
+    ],
+  };
+
+  const pieChartData = data.categoryBreakdown.map((item) => ({
+    name: item.name,
+    amount: item.amount,
+    color: item.color,
+    legendFontColor: '#333',
+  }));
+
+  if (!showContent) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.loadingText}>Loading data...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4CAF50" />
+      }
+    >
+      <FadeInView>
+        <LinearGradient
+          colors={['#4CAF50', '#2196F3']}
+          style={styles.header}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.headerTitle}>Reports</Text>
+              <Text style={styles.headerSubtitle}>Financial insights</Text>
+            </View>
+            <View style={styles.headerIcon}>
+              <Ionicons name="stats-chart" size={28} color="#fff" />
+            </View>
+          </View>
+        </LinearGradient>
+      </FadeInView>
+
+      <View style={styles.summaryGrid}>
+        <StaggeredCard index={0}>
+          <View style={[styles.summaryCard, styles.incomeCard]}>
+            <Ionicons name="arrow-up-circle" size={20} color="#4CAF50" />
+            <Text style={styles.summaryLabel}>Income</Text>
+            <Text style={[styles.summaryValue, styles.incomeText]}>
+              {formatCurrency(data.income)}
+            </Text>
+          </View>
+        </StaggeredCard>
+        <StaggeredCard index={1}>
+          <View style={[styles.summaryCard, styles.expenseCard]}>
+            <Ionicons name="arrow-down-circle" size={20} color="#F44336" />
+            <Text style={styles.summaryLabel}>Expenses</Text>
+            <Text style={[styles.summaryValue, styles.expenseText]}>
+              {formatCurrency(data.expenses)}
+            </Text>
+          </View>
+        </StaggeredCard>
+        <StaggeredCard index={2}>
+          <View style={[styles.summaryCard, styles.profitCard]}>
+            <Ionicons name="cash-outline" size={20} color={data.netProfit >= 0 ? '#4CAF50' : '#F44336'} />
+            <Text style={styles.summaryLabel}>Net Profit</Text>
+            <Text style={[
+              styles.summaryValue,
+              data.netProfit >= 0 ? styles.profitText : styles.lossText
+            ]}>
+              {formatCurrency(data.netProfit)}
+            </Text>
+          </View>
+        </StaggeredCard>
+        <StaggeredCard index={3}>
+          <View style={[styles.summaryCard, styles.taxCard]}>
+            <Ionicons name="receipt-outline" size={20} color="#FF9800" />
+            <Text style={styles.summaryLabel}>Tax</Text>
+            <Text style={[styles.summaryValue, styles.taxText]}>
+              {formatCurrency(data.taxes)}
+            </Text>
+          </View>
+        </StaggeredCard>
+        <StaggeredCard index={4}>
+          <View style={[styles.summaryCard, styles.receiptCard]}>
+            <Ionicons name="document-text-outline" size={20} color="#2196F3" />
+            <Text style={styles.summaryLabel}>Receipts</Text>
+            <Text style={[styles.summaryValue, styles.receiptText]}>
+              {data.receiptCount}
+            </Text>
+          </View>
+        </StaggeredCard>
+      </View>
+
+      <FadeInView>
+        <View style={styles.chartContainer}>
+          <Text style={styles.chartTitle}>Income vs Expenses</Text>
+          <BarChart
+            data={barChartData}
+            width={width - 32}
+            height={200}
+            yAxisLabel="$"
+            chartConfig={{
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientTo: '#ffffff',
+              decimalPlaces: 0,
+              color: (opacity = 1) => 'rgba(0, 0, 0, ' + opacity + ')',
+              labelColor: (opacity = 1) => 'rgba(0, 0, 0, ' + opacity + ')',
+              style: { borderRadius: 16 },
+              barPercentage: 0.7,
+            }}
+            style={styles.chart}
+            fromZero
+          />
+        </View>
+      </FadeInView>
+
+      {data.categoryBreakdown.length > 0 && (
+        <FadeInView>
+          <View style={styles.chartContainer}>
+            <Text style={styles.chartTitle}>Spending by Category</Text>
+            <PieChart
+              data={pieChartData}
+              width={width - 32}
+              height={180}
+              chartConfig={{
+                color: (opacity = 1) => 'rgba(0, 0, 0, ' + opacity + ')',
+              }}
+              accessor="amount"
+              backgroundColor="transparent"
+              paddingLeft="15"
+              absolute
+            />
+          </View>
+        </FadeInView>
+      )}
+
+      {data.taxBreakdown.length > 0 && (
+        <FadeInView>
+          <View style={styles.taxContainer}>
+            <Text style={styles.chartTitle}>Tax Breakdown</Text>
+            {data.taxBreakdown.map((tax, index) => {
+              const barWidth = (tax.amount / data.taxes) * 100;
+              const colors = ['#4CAF50', '#FF9800', '#2196F3', '#9C27B0'];
+              return (
+                <View key={index} style={styles.taxItem}>
+                  <Text style={styles.taxType}>{tax.type}</Text>
+                  <View style={styles.taxBarContainer}>
+                    <View 
+                      style={[
+                        styles.taxBarFill, 
+                        { 
+                          width: Math.max(barWidth, 5) + '%',
+                          backgroundColor: colors[index % colors.length]
+                        }
+                      ]} 
+                    />
+                  </View>
+                  <Text style={styles.taxAmount}>{formatCurrency(tax.amount)}</Text>
+                </View>
+              );
+            })}
+            <View style={styles.taxTotal}>
+              <Text style={styles.taxTotalLabel}>Total Tax</Text>
+              <Text style={styles.taxTotalAmount}>{formatCurrency(data.taxes)}</Text>
+            </View>
+          </View>
+        </FadeInView>
+      )}
+
+      {data.topMerchants.length > 0 && (
+        <FadeInView>
+          <View style={styles.merchantsContainer}>
+            <Text style={styles.chartTitle}>Top Merchants</Text>
+            {data.topMerchants.map((merchant, index) => {
+              const maxAmount = data.topMerchants[0]?.amount || 1;
+              const percentage = (merchant.amount / maxAmount) * 100;
+              return (
+                <View key={index} style={styles.merchantItem}>
+                  <Text style={styles.merchantName}>
+                    {index + 1}. {merchant.name}
+                  </Text>
+                  <View style={styles.merchantBar}>
+                    <View style={[styles.merchantBarFill, { width: percentage + '%' }]} />
+                  </View>
+                  <Text style={styles.merchantAmount}>{formatCurrency(merchant.amount)}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </FadeInView>
+      )}
+
+      <FadeInView>
+        <View style={styles.trendsContainer}>
+          <Text style={styles.chartTitle}>Monthly Trends</Text>
+          <View style={styles.trendItem}>
+            <Text style={styles.trendLabel}>Revenue</Text>
+            <View style={styles.trendValue}>
+              <Ionicons 
+                name={getTrendIcon(data.trends.revenue)} 
+                size={20} 
+                color={getTrendColor(data.trends.revenue)} 
+              />
+              <Text style={[styles.trendText, { color: getTrendColor(data.trends.revenue) }]}>
+                {(data.trends.revenue > 0 ? '+' : '') + data.trends.revenue.toFixed(1) + '%'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.trendItem}>
+            <Text style={styles.trendLabel}>Expenses</Text>
+            <View style={styles.trendValue}>
+              <Ionicons 
+                name={getTrendIcon(-data.trends.expenses)} 
+                size={20} 
+                color={getTrendColor(-data.trends.expenses)} 
+              />
+              <Text style={[styles.trendText, { color: getTrendColor(-data.trends.expenses) }]}>
+                {(data.trends.expenses > 0 ? '+' : '') + (-data.trends.expenses).toFixed(1) + '%'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.trendItem}>
+            <Text style={styles.trendLabel}>Net Profit</Text>
+            <View style={styles.trendValue}>
+              <Ionicons 
+                name={getTrendIcon(data.trends.net)} 
+                size={20} 
+                color={getTrendColor(data.trends.net)} 
+              />
+              <Text style={[styles.trendText, { color: getTrendColor(data.trends.net) }]}>
+                {(data.trends.net > 0 ? '+' : '') + data.trends.net.toFixed(1) + '%'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </FadeInView>
+
+      <TouchableOpacity 
+        style={styles.exportButton} 
+        onPress={() => navigation.navigate('Export' as never)}
+      >
+        <Ionicons name="download-outline" size={20} color="#fff" />
+        <Text style={styles.exportButtonText}>Export Full Report</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7A8F',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    paddingTop: 60,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1A2332',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#6B7A8F',
+    marginTop: 4,
+    marginBottom: 24,
+  },
+  scanButton: {
+    flexDirection: 'row',
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    gap: 8,
+  },
+  scanButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  header: {
+    paddingTop: 48,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  headerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 12,
+    gap: 8,
+  },
+  summaryCard: {
+    flex: 1,
+    minWidth: '30%',
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  incomeCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#4CAF50',
+  },
+  expenseCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#F44336',
+  },
+  profitCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#2196F3',
+  },
+  taxCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF9800',
+  },
+  receiptCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#9C27B0',
+  },
+  summaryLabel: {
+    fontSize: 10,
+    color: '#6B7A8F',
+    marginTop: 2,
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
+  incomeText: { color: '#4CAF50' },
+  expenseText: { color: '#F44336' },
+  profitText: { color: '#4CAF50' },
+  lossText: { color: '#F44336' },
+  taxText: { color: '#FF9800' },
+  receiptText: { color: '#9C27B0' },
+  chartContainer: {
+    backgroundColor: '#fff',
+    marginHorizontal: 12,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  chartTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A2332',
+    marginBottom: 8,
+  },
+  chart: {
+    borderRadius: 12,
+  },
+  taxContainer: {
+    backgroundColor: '#fff',
+    marginHorizontal: 12,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  taxItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  taxType: {
+    flex: 1,
+    fontSize: 13,
+    color: '#1A2332',
+  },
+  taxBarContainer: {
+    flex: 2,
+    height: 6,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 3,
+    marginHorizontal: 8,
+    overflow: 'hidden',
+  },
+  taxBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  taxAmount: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1A2332',
+    minWidth: 60,
+    textAlign: 'right',
+  },
+  taxTotal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    marginTop: 4,
+  },
+  taxTotalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A2332',
+  },
+  taxTotalAmount: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FF9800',
+  },
+  merchantsContainer: {
+    backgroundColor: '#fff',
+    marginHorizontal: 12,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  merchantItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  merchantName: {
+    flex: 1,
+    fontSize: 13,
+    color: '#1A2332',
+  },
+  merchantBar: {
+    flex: 2,
+    height: 6,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 3,
+    marginHorizontal: 8,
+    overflow: 'hidden',
+  },
+  merchantBarFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 3,
+  },
+  merchantAmount: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1A2332',
+  },
+  trendsContainer: {
+    backgroundColor: '#fff',
+    marginHorizontal: 12,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  trendItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  trendLabel: {
+    fontSize: 13,
+    color: '#1A2332',
+  },
+  trendValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  trendText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  exportButton: {
+    flexDirection: 'row',
+    backgroundColor: '#4CAF50',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  exportButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});
+
+export default ReportsScreen;
+
+
+
+
+
+
+
+
+
+
+
